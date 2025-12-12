@@ -1,28 +1,29 @@
-.PHONY: up down build test lint clean check-clean
+.PHONY: help dev-api dev-web test lint format clean
 
-up:
-	docker compose up
+help:
+	@echo "Available commands:"
+	@echo "  make dev-api    - Start Backend API (FastAPI)"
+	@echo "  make dev-web    - Start Frontend (Next.js)"
+	@echo "  make test       - Run all tests (Backend)"
+	@echo "  make lint       - Run linting (Ruff + Mypy)"
+	@echo "  make format     - Auto-format code"
 
-down:
-	docker compose down
+dev-api:
+	cd apps/api && uvicorn main:app --reload --port 8000
 
-build:
-	docker compose up --build
+dev-web:
+	cd apps/web && npm run dev
 
 test:
-	docker compose run --rm api pytest
-	# Add other service tests here as needed
+	cd apps/api && pytest
 
 lint:
-	docker compose run --rm api flake8 .
-	docker compose run --rm api black --check .
-	docker compose run --rm api mypy .
+	cd apps/api && ruff check . && mypy .
+
+format:
+	cd apps/api && ruff check --fix . && ruff format .
 
 clean:
-	docker compose down -v
-	rm -rf data/workspaces/*
-
-# Helper to check for clean environment
-check-clean:
-	@echo "Checking environment..."
-	docker compose ps
+	find . -type d -name "__pycache__" -exec rm -rf {} +
+	find . -type d -name ".pytest_cache" -exec rm -rf {} +
+	find . -type d -name ".mypy_cache" -exec rm -rf {} +

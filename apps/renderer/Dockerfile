@@ -1,10 +1,17 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install LibreOffice and dependencies for headless rendering
+# fonts-liberation and others for better font support
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    libreoffice-headless \
+    libreoffice-java-common \
+    default-jre \
+    fonts-liberation \
+    fonts-dejavu \
+    poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .

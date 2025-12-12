@@ -1,39 +1,146 @@
+databases:
+  - name: pultimate-db
+    databaseName: pultimate
+    user: pultimate
+    plan: starter
+    ipAllowList: []
+
 services:
-  # API Service
-  - type: web
-    name: decklint-api
-    runtime: docker
-    dockerContext: ./apps/api
-    dockerfilePath: Dockerfile
-    envVars:
-      - key: PORT
-        value: 10000
-    plan: free
-    region: ohio
+  # --- Redis (Managed) ---
+  - type: redis
+    name: pultimate-redis
+    plan: starter
+    ipAllowList: []
 
-  # Renderer Service
-  - type: pserv
-    name: decklint-renderer
-    runtime: docker
-    dockerContext: ./apps/renderer
-    dockerfilePath: Dockerfile
-    envVars:
-      - key: PORT
-        value: 10000
-    plan: free
-    region: ohio
-
-  # Web Service (Next.js)
+  # --- Backend API (Docker) ---
   - type: web
-    name: decklint-web
-    runtime: docker
-    dockerContext: ./apps/web
-    dockerfilePath: Dockerfile # Production build
+    name: pultimate-api
+    env: docker
+    region: frankfurt
+    plan: starter
+    dockerfilePath: apps/api/Dockerfile
+    dockerContext: .
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pultimate-db
+          property: connectionString
+
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: pultimate-redis
+          property: connectionString
+
+      # Celery explicit (recommended)
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: redis
+          name: pultimate-redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: redis
+          name: pultimate-redis
+          property: connectionString
+
+      - key: SECRET_KEY
+        generateValue: true
+
+      # Feature flags
+      - key: RENDERING_ENABLED
+        value: "true"
+
+      # S3 (external)
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_BUCKET_TEMPLATES
+        value: "pultimate-templates"
+      - key: S3_BUCKET_DECKS
+        value: "pultimate-decks"
+
+      # App runtime
+      - key: PORT
+        value: "8000"
+      - key: ENV
+        value: "production"
+
+    healthCheckPath: /health
+
+  # --- Celery Worker (Docker) ---
+  - type: worker
+    name: pultimate-worker
+    env: docker
+    region: frankfurt
+    plan: starter
+    dockerfilePath: apps/api/Dockerfile
+    dockerContext: .
+    dockerCommand: >
+      celery -A worker:celery_app worker
+      --loglevel=info
+      --concurrency=2
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pultimate-db
+          property: connectionString
+
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: pultimate-redis
+          property: connectionString
+
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: redis
+          name: pultimate-redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: redis
+          name: pultimate-redis
+          property: connectionString
+
+      - key: RENDERING_ENABLED
+        value: "true"
+
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_BUCKET_TEMPLATES
+        value: "pultimate-templates"
+      - key: S3_BUCKET_DECKS
+        value: "pultimate-decks"
+
+      - key: ENV
+        value: "production"
+
+  # --- Frontend (Node Native) ---
+  - type: web
+    name: pultimate-web
+    env: node
+    region: frankfurt
+    plan: starter
+    buildCommand: |
+      cd apps/web
+      npm ci
+      npm run build
+    startCommand: |
+      cd apps/web
+      npm start
     envVars:
       - key: NEXT_PUBLIC_API_URL
         fromService:
           type: web
-          name: decklint-api
+          name: pultimate-api
           property: url
-    plan: free
-    region: ohio
+      - key: NODE_ENV
+        value: production

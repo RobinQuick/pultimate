@@ -1,43 +1,66 @@
 import pytest
-import os
-from pptx import Presentation
-from apps.api.services.audit import audit_engine, SlideStatus, IssueSeverity
+from apps.api.services.audit import audit_engine
+from apps.api.schemas.slide_spec import DeckSpec, SlideSpec, ElementSpec, TextStyle, SlideStats
+from apps.api.schemas.template_spec import TemplateSpec, ThemeColors, ThemeFonts, RgbColor, MasterSpec
 
-def create_synthetic_pptx(path, title_text=None, body_text=None):
-    prs = Presentation()
-    slide_layout = prs.slide_layouts[0] # Title Slide
-    slide = prs.slides.add_slide(slide_layout)
+def test_audit_engine():
+    # 1. Setup Template
+    template = TemplateSpec(
+        name="Corp Template",
+        theme_fonts=ThemeFonts(major="Arial", minor="Inter"),
+        theme_colors=ThemeColors(
+            accent1=RgbColor(r=255, g=0, b=0) # Red #FF0000
+        ),
+        masters=[]
+    )
     
-    if title_text is not None:
-        slide.shapes.title.text = title_text
+    # 2. Setup Bad Slide
+    slide = SlideSpec(
+        index=0,
+        layout_name="Title",
+        stats=SlideStats(),
+        elements=[
+            # Bad Font
+            ElementSpec(
+                id="1", type="TEXT_BOX", name="Title", z_order=1,
+                bbox={"x":0,"y":0,"width":100,"height":100},
+                text_content="Hello",
+                text_style=TextStyle(font_family="Times New Roman", color_hex="FF0000")
+            ),
+            # Bad Color
+            ElementSpec(
+                 id="2", type="TEXT_BOX", name="Subtitle", z_order=2,
+                 bbox={"x":0,"y":0,"width":100,"height":100},
+                 text_content="World",
+                 text_style=TextStyle(font_family="Inter", color_hex="00FF00") # Green (Bad)
+            ),
+             # Stretched Image
+            ElementSpec(
+                 id="3", type="IMAGE", name="Logo", z_order=3,
+                 bbox={"x":0,"y":0,"width":100,"height":100},
+                 is_stretched=True
+            )
+        ]
+    )
     
-    if body_text is not None:
-        # Add a text box or use subtitle
-        pass # simplified for this test
-        
-    prs.save(path)
-
-def test_audit_empty_title(tmp_path):
-    pptx_path = tmp_path / "test.pptx"
-    create_synthetic_pptx(pptx_path, title_text="") # Empty title
+    deck = DeckSpec(filename="test.pptx", slide_count=1, slides=[slide])
     
-    summaries = audit_engine.audit_deck(str(pptx_path))
+    # 3. Run Audit
+    findings = audit_engine.audit(deck, template)
     
-    assert len(summaries) == 1
-    assert summaries[0].status == SlideStatus.REVIEW # Warnings mapped to REVIEW in code currently?
-    # Wait, my code said: ERROR->REBUILD, WARNING->REVIEW.
-    # TITLE_EMPTY is WARNING. So yes, REVIEW.
+    # 4. Verify Findings
+    assert len(findings) == 3
     
-    issues = summaries[0].issues
-    assert len(issues) > 0
-    assert issues[0].rule_id == "RULE_EMPTY_TITLE"
-
-def test_audit_clean_title(tmp_path):
-    pptx_path = tmp_path / "clean.pptx"
-    create_synthetic_pptx(pptx_path, title_text="Valid Title")
+    # Check Font Finding
+    f_font = next(f for f in findings if f.rule_id == "FONT_MISMATCH")
+    assert f_font.element_id == "1"
+    assert "Times New Roman" in f_font.message
     
-    summaries = audit_engine.audit_deck(str(pptx_path))
+    # Check Color Finding
+    f_color = next(f for f in findings if f.rule_id == "COLOR_MISMATCH")
+    assert f_color.element_id == "2"
+    assert "00FF00" in f_color.message
     
-    assert len(summaries) == 1
-    assert summaries[0].status == SlideStatus.CLEAN
-    assert len(summaries[0].issues) == 0
+    # Check Image Finding
+    f_img = next(f for f in findings if f.rule_id == "IMG_QUALITY")
+    assert f_img.element_id == "3"

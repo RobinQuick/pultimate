@@ -1,15 +1,26 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .routers import jobs
-import os
+from .core.config import settings
+from .database import init_db
+from .api.v1 import auth, decks, analysis, templates
 
-app = FastAPI(title="DeckLint API", version="1.0.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Initialize DB tables
+    await init_db()
+    yield
 
-# CORS Configuration
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    lifespan=lifespan,
+    version="2.0.0"
+)
+
+# CORS configuration
 origins = [
     "http://localhost:3000",
     "http://localhost",
-    os.getenv("NEXT_PUBLIC_API_URL", "http://localhost:3000"),
 ]
 
 app.add_middleware(
@@ -20,12 +31,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(jobs.router)
+app.include_router(auth.router, prefix="/api/v1")
+app.include_router(decks.router, prefix="/api/v1")
+app.include_router(analysis.router, prefix="/api/v1")
+app.include_router(templates.router, prefix="/api/v1")
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok", "version": "1.0.0"}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    return {"status": "ok", "version": "2.0.0"}
