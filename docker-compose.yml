@@ -1,0 +1,62 @@
+services:
+  # API Service (FastAPI)
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: decklint-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./apps/api:/app
+      - ./data:/data
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PORT=8000
+    networks:
+      - internal
+      - public
+    restart: always
+
+  # Web UI (Next.js)
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile.dev
+    container_name: decklint-web
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - WATCHPACK_POLLING=true
+    depends_on:
+      - api
+    networks:
+      - public
+    restart: always
+
+  # Renderer Service (Python/Headless)
+  renderer:
+    build:
+      context: ./apps/renderer
+      dockerfile: Dockerfile
+    container_name: decklint-renderer
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./apps/renderer:/app
+      - ./data:/data
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PORT=8001
+    networks:
+      - internal
+    restart: always
+
+networks:
+  public:
+  internal:
+    internal: true

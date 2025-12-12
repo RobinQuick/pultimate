@@ -1,0 +1,39 @@
+services:
+  # API Service
+  - type: web
+    name: decklint-api
+    runtime: docker
+    dockerContext: ./apps/api
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: PORT
+        value: 10000
+    plan: free
+    region: ohio
+
+  # Renderer Service
+  - type: pserv
+    name: decklint-renderer
+    runtime: docker
+    dockerContext: ./apps/renderer
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: PORT
+        value: 10000
+    plan: free
+    region: ohio
+
+  # Web Service (Next.js)
+  - type: web
+    name: decklint-web
+    runtime: docker
+    dockerContext: ./apps/web
+    dockerfilePath: Dockerfile # Production build
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: decklint-api
+          property: url
+    plan: free
+    region: ohio
