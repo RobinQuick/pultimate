@@ -18,8 +18,8 @@ services:
     env: docker
     region: frankfurt
     plan: starter
-    dockerfilePath: apps/api/Dockerfile
-    dockerContext: .
+    dockerfilePath: Dockerfile
+    dockerContext: apps/api
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -32,7 +32,7 @@ services:
           name: pultimate-redis
           property: connectionString
 
-      # Celery explicit (recommended)
+      # Celery explicit
       - key: CELERY_BROKER_URL
         fromService:
           type: redis
@@ -77,8 +77,8 @@ services:
     env: docker
     region: frankfurt
     plan: starter
-    dockerfilePath: apps/api/Dockerfile
-    dockerContext: .
+    dockerfilePath: Dockerfile
+    dockerContext: apps/api
     dockerCommand: >
       celery -A worker:celery_app worker
       --loglevel=info
