@@ -6,8 +6,10 @@ import time
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
+import os
 
-from core.config import settings
+# Handle case where DATABASE_URL is not set (skip migrations)
+DATABASE_URL = os.getenv("DATABASE_URL", "")
 
 
 # --- JSON Logging Setup ---
@@ -37,10 +39,11 @@ SLEEP_INTERVAL = 2
 
 def init_db_connection():
     """Create a sync engine for pre-start checks"""
-    # Force sync driver if async is configured, or assume settings.SQLALCHEMY_DATABASE_URI works with create_engine
-    # If URL is async (postgresql+asyncpg), we need to replace it for this script or use async engine.
-    # For simplicity/reliability in scripts, replacing with sync driver 'postgresql+psycopg' or 'postgresql' is common.
-    url = str(settings.SQLALCHEMY_DATABASE_URI)
+    if not DATABASE_URL:
+        logger.info("DATABASE_URL not set, skipping DB checks")
+        return None
+    
+    url = DATABASE_URL
     if "asyncpg" in url:
         url = url.replace("+asyncpg", "")
     
@@ -96,21 +99,23 @@ def main():
         logger.error(f"Failed to initialize DB engine config: {e}")
         sys.exit(1)
 
-    if not wait_for_db(engine):
+    if engine is None:
+        logger.info("No database configured, skipping migrations.")
+    elif not wait_for_db(engine):
         sys.exit(1)
-
-    # Wrap migration in a transaction to hold the lock
-    # pg_advisory_xact_lock automatically releases at end of transaction
-    try:
-        with engine.begin() as conn:
-            acquire_advisory_lock(conn)
-            # Run migrations (Safe because we hold the exclusive lock for this ID)
-            run_migrations()
-            # Lock released when 'with engine.begin()' exits (commits)
-            logger.info("Advisory lock released.")
-    except Exception as e:
-        logger.error(f"Initialization failed: {e}")
-        sys.exit(1)
+    else:
+        # Wrap migration in a transaction to hold the lock
+        # pg_advisory_xact_lock automatically releases at end of transaction
+        try:
+            with engine.begin() as conn:
+                acquire_advisory_lock(conn)
+                # Run migrations (Safe because we hold the exclusive lock for this ID)
+                run_migrations()
+                # Lock released when 'with engine.begin()' exits (commits)
+                logger.info("Advisory lock released.")
+        except Exception as e:
+            logger.error(f"Initialization failed: {e}")
+            sys.exit(1)
 
     logger.info("Prestart complete. App is ready to launch.")
 
