@@ -1,0 +1,26 @@
+# fly.worker.toml - Pultimate Celery Worker
+app = "pultimate-worker"
+primary_region = "cdg"
+kill_signal = "SIGTERM"
+kill_timeout = 120
+
+[build]
+  dockerfile = "apps/api/Dockerfile"
+
+[env]
+  ENV = "production"
+  PYTHONUNBUFFERED = "1"
+  RENDERING_ENABLED = "true"
+
+[mounts]
+  source = "pultimate_tmp"
+  destination = "/tmp/pultimate"
+  initial_size = "1gb"
+
+[[vm]]
+  memory = "1024mb"
+  cpu_kind = "shared"
+  cpus = 1
+
+[processes]
+  worker = "celery -A worker:celery_app worker --loglevel=info --concurrency=2"
