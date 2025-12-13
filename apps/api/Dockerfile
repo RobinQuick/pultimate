@@ -23,11 +23,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN useradd -m -u 1000 appuser
 
 # Install python dependencies
-COPY requirements.txt .
+COPY apps/api/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-COPY . .
+COPY apps/api/ .
 
 # Set ownership to non-root user
 RUN chown -R appuser:appuser /app
