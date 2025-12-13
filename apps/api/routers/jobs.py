@@ -1,4 +1,5 @@
-from fastapi import APIRouter, UploadFile, File, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile
+
 from ..models import JobState
 from ..services.jobs import job_manager
 

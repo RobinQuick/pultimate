@@ -1,5 +1,5 @@
 import magic
-from fastapi import UploadFile, HTTPException
+from fastapi import HTTPException, UploadFile
 
 MAX_FILE_SIZE = 50 * 1024 * 1024 # 50 MB
 ALLOWED_MIME_TYPES = [

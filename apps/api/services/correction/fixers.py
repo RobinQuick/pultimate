@@ -1,10 +1,11 @@
-from .base import BaseFixer, FixResult
-from .engine import FixerRegistry
+from pptx.dml.color import RGBColor
 from pptx.slide import Slide
+
 from ...schemas.template_spec import TemplateSpec
 from ...services.rules.base import FindingSpec
-from pptx.util import Pt
-from pptx.dml.color import RGBColor
+from .base import BaseFixer, FixResult
+from .engine import FixerRegistry
+
 
 def find_shape_by_id(slide: Slide, shape_id: str):
     # python-pptx shape_id is int, our Spec uses str

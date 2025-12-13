@@ -1,12 +1,14 @@
+import json
+import logging
 import os
 import shutil
 import uuid
-import json
 from datetime import datetime
-from fastapi import UploadFile, BackgroundTasks
-from .models import JobState, JobStatus
+
+from fastapi import UploadFile
+
 from .audit import audit_engine
-import logging
+from .models import JobState, JobStatus
 
 # Configuration
 DATA_DIR = "/data/workspaces"
@@ -45,7 +47,7 @@ class JobManager:
         state_path = os.path.join(DATA_DIR, job_id, "state.json")
         if not os.path.exists(state_path):
             return None
-        with open(state_path, "r") as f:
+        with open(state_path) as f:
             data = json.load(f)
             # Handle datetime parsing if needed, but pydantic usually handles isoformat
             return JobState(**data)

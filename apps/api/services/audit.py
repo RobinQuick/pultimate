@@ -1,16 +1,15 @@
-from typing import List, Dict
 from ..schemas.slide_spec import DeckSpec
 from ..schemas.template_spec import TemplateSpec
-from .rules.registry import registry
 from .rules.base import FindingSpec
+from .rules.registry import registry
+
 # Import definitions to trigger registration
-from .rules.definitions import basics 
 
 class DeckLintEngine:
     def __init__(self):
         self.rules = registry.get_all_rules()
 
-    def audit(self, deck: DeckSpec, template: TemplateSpec) -> List[FindingSpec]:
+    def audit(self, deck: DeckSpec, template: TemplateSpec) -> list[FindingSpec]:
         all_findings = []
         
         for slide in deck.slides:

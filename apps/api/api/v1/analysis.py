@@ -1,13 +1,15 @@
-from fastapi import APIRouter, Depends, UploadFile, File
-from ...worker import process_deck
-from ...schemas.common import AnalysisStart, AnalysisResponse
-from ...schemas.slide_spec import DeckSpec
-from ...services.parser import deck_parser
-from ...deps import get_current_user
-from ...models.sql_models import User
+import os
 import shutil
 import tempfile
-import os
+
+from fastapi import APIRouter, Depends, File, UploadFile
+
+from ...deps import get_current_user
+from ...models.sql_models import User
+from ...schemas.common import AnalysisResponse, AnalysisStart
+from ...schemas.slide_spec import DeckSpec
+from ...services.parser import deck_parser
+from ...worker import process_deck
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
 

@@ -1,16 +1,17 @@
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, Form
+import os
+import shutil
+import tempfile
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+
+from ...core.config import settings
 from ...database import get_db
 from ...deps import get_current_user
-from ...models.sql_models import User, Template, TemplateVersion, Workspace
-from ...services.storage import storage
-from ...services.ingestion import ingestor
-from ...core.config import settings
+from ...models.sql_models import Template, TemplateVersion, User
 from ...schemas.template_spec import TemplateSpec
-import os
-import tempfile
-import shutil
+from ...services.ingestion import ingestor
+from ...services.storage import storage
 
 router = APIRouter(prefix="/templates", tags=["templates"])
 
@@ -53,7 +54,7 @@ async def create_template(
         spec = ingestor.ingest(tmp_path)
         os.unlink(tmp_path)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ingestion failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Ingestion failed: {e}") from e
 
     # 4. Create Version 1
     version = TemplateVersion(

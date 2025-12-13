@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from ...core.config import settings
 from ...database import get_db
 from ...deps import get_current_user
-from ...models.sql_models import User, Deck, DeckFile
-from ...services.storage import storage
-from ...core.config import settings
+from ...models.sql_models import Deck, DeckFile, User
 from ...schemas.common import DeckResponse
+from ...services.storage import storage
 
 router = APIRouter(prefix="/decks", tags=["decks"])
 

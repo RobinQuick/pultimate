@@ -1,7 +1,8 @@
-import pytest
-from unittest.mock import MagicMock, patch, ANY
-from apps.api.prestart import wait_for_db, main, MIGRATION_LOCK_ID
+from unittest.mock import MagicMock, patch
+
+from apps.api.prestart import main, wait_for_db
 from sqlalchemy.exc import OperationalError
+
 
 @patch("apps.api.prestart.create_engine")
 @patch("time.sleep")

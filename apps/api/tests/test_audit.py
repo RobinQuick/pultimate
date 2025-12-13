@@ -1,7 +1,7 @@
-import pytest
+from apps.api.schemas.slide_spec import DeckSpec, ElementSpec, SlideSpec, SlideStats, TextStyle
+from apps.api.schemas.template_spec import RgbColor, TemplateSpec, ThemeColors, ThemeFonts
 from apps.api.services.audit import audit_engine
-from apps.api.schemas.slide_spec import DeckSpec, SlideSpec, ElementSpec, TextStyle, SlideStats
-from apps.api.schemas.template_spec import TemplateSpec, ThemeColors, ThemeFonts, RgbColor, MasterSpec
+
 
 def test_audit_engine():
     # 1. Setup Template

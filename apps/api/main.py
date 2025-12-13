@@ -1,9 +1,12 @@
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from .api.v1 import analysis, auth, decks, templates
 from .core.config import settings
 from .database import init_db
-from .api.v1 import auth, decks, analysis, templates
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

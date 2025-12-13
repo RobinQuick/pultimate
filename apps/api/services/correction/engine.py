@@ -1,17 +1,18 @@
-from typing import List, Type, Dict
+import logging
+
 from pptx import Presentation
-from .base import BaseFixer, FixResult
+
 from ...schemas.template_spec import TemplateSpec
 from ...services.rules.base import FindingSpec
-import logging
+from .base import BaseFixer, FixResult
 
 logger = logging.getLogger(__name__)
 
 class FixerRegistry:
-    _fixers: Dict[str, Type[BaseFixer]] = {}
+    _fixers: dict[str, type[BaseFixer]] = {}
 
     @classmethod
-    def register(cls, fixer_cls: Type[BaseFixer]):
+    def register(cls, fixer_cls: type[BaseFixer]):
         cls._fixers[fixer_cls.rule_id] = fixer_cls
         return fixer_cls
 
@@ -23,7 +24,7 @@ class FixerRegistry:
         return None
 
 class RestyleEngine:
-    def apply_fixes(self, pptx_path: str, output_path: str, findings: List[FindingSpec], template: TemplateSpec, mode: str = "SAFE") -> List[FixResult]:
+    def apply_fixes(self, pptx_path: str, output_path: str, findings: list[FindingSpec], template: TemplateSpec, mode: str = "SAFE") -> list[FixResult]:
         """
         Loads the PPTX, applies fixes for each finding, saves to output_path.
         """

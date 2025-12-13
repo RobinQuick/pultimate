@@ -1,12 +1,13 @@
-from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Literal, Union
+from typing import Literal
+
+from pydantic import BaseModel
 
 # --- Slide Intent ---
 
 class LogicalBlock(BaseModel):
     id: str # internal ID
     role: str # HEADER, BODY_COL_1, BODY_COL_2, FOOTER, CHART_LEGEND
-    element_ids: List[str] # List of element IDs from SlideSpec belonging to this block
+    element_ids: list[str] # List of element IDs from SlideSpec belonging to this block
 
 class SlideIntent(BaseModel):
     slide_type: Literal[
@@ -15,7 +16,7 @@ class SlideIntent(BaseModel):
         "BIG_NUMBER", "QUOTE", "TEAM", "CHART"
     ] = "UNKNOWN"
     description: str # "Two columns of text with a header"
-    logical_blocks: List[LogicalBlock] = []
+    logical_blocks: list[LogicalBlock] = []
     content_density: Literal["LOW", "MEDIUM", "HIGH"] = "MEDIUM"
     confidence: float = 0.0
 
@@ -29,13 +30,13 @@ class ElementMapping(BaseModel):
 class StyleTransform(BaseModel):
     element_id: str
     action: Literal["PROMOTE_HEADING", "DEMOTE_BULLET", "RESET_STYLE", "APPLY_COLOR"]
-    params: Dict[str, str] = {} # e.g. {"level": "1"}
+    params: dict[str, str] = {} # e.g. {"level": "1"}
 
 class RebuildPlan(BaseModel):
     source_slide_index: int
     target_layout_index: int # Index in the Template Master
     target_master_index: int = 0
-    mappings: List[ElementMapping] = []
-    transforms: List[StyleTransform] = []
+    mappings: list[ElementMapping] = []
+    transforms: list[StyleTransform] = []
     reasoning: str # Explainability trace
-    safety_flags: List[str] = [] # "Potential Text Truncation", "Overlap Risk"
+    safety_flags: list[str] = [] # "Potential Text Truncation", "Overlap Risk"

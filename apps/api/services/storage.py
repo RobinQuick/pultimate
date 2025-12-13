@@ -1,8 +1,11 @@
-import aioboto3
-from fastapi import UploadFile
 import uuid
-from ..core.config import settings
+
+import aioboto3
 from botocore.config import Config
+from fastapi import UploadFile
+
+from ..core.config import settings
+
 
 class StorageService:
     def __init__(self):

@@ -1,5 +1,6 @@
+
 from pydantic import BaseModel
-from typing import List, Optional, Any, Dict
+
 
 class BoundingBox(BaseModel):
     x: float
@@ -8,12 +9,12 @@ class BoundingBox(BaseModel):
     height: float
 
 class TextStyle(BaseModel):
-    font_family: Optional[str] = None
-    font_size: Optional[float] = None
+    font_family: str | None = None
+    font_size: float | None = None
     is_bold: bool = False
     is_italic: bool = False
-    color_hex: Optional[str] = None
-    alignment: Optional[str] = None # LEFT, CENTER, RIGHT, JUSTIFY
+    color_hex: str | None = None
+    alignment: str | None = None # LEFT, CENTER, RIGHT, JUSTIFY
 
 class ElementSpec(BaseModel):
     id: str
@@ -24,29 +25,29 @@ class ElementSpec(BaseModel):
     z_order: int
     
     # Text Specific
-    text_content: Optional[str] = None
-    text_style: Optional[TextStyle] = None
+    text_content: str | None = None
+    text_style: TextStyle | None = None
     
     # Image Specific
     is_stretched: bool = False
-    original_size: Optional[Dict[str, float]] = None
+    original_size: dict[str, float] | None = None
     
     # Shape Specific
-    fill_color: Optional[str] = None
+    fill_color: str | None = None
 
 class SlideStats(BaseModel):
-    used_fonts: List[str] = []
-    used_colors: List[str] = []
+    used_fonts: list[str] = []
+    used_colors: list[str] = []
     text_coverage_pct: float = 0.0
 
 class SlideSpec(BaseModel):
     index: int
     layout_name: str
-    elements: List[ElementSpec] = []
+    elements: list[ElementSpec] = []
     stats: SlideStats
-    suspect_issues: List[str] = [] # "Low Res Image", "Non-Embed Font"
+    suspect_issues: list[str] = [] # "Low Res Image", "Non-Embed Font"
 
 class DeckSpec(BaseModel):
     filename: str
     slide_count: int
-    slides: List[SlideSpec] = []
+    slides: list[SlideSpec] = []

@@ -1,11 +1,14 @@
+import json
 import logging
+import subprocess
 import sys
 import time
-import json
-import subprocess
-from sqlalchemy import text, create_engine
-from sqlalchemy.exc import OperationalError, ProgrammingError
+
+from sqlalchemy import create_engine, text
+from sqlalchemy.exc import OperationalError
+
 from core.config import settings
+
 
 # --- JSON Logging Setup ---
 class JsonFormatter(logging.Formatter):

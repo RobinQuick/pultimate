@@ -1,8 +1,9 @@
+import logging
+
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
-from pptx.enum.text import PP_ALIGN
-from ..schemas.slide_spec import DeckSpec, SlideSpec, ElementSpec, BoundingBox, TextStyle, SlideStats
-import logging
+
+from ..schemas.slide_spec import BoundingBox, DeckSpec, ElementSpec, SlideSpec, SlideStats, TextStyle
 
 logger = logging.getLogger(__name__)
 

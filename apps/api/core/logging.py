@@ -1,6 +1,8 @@
 import logging
-from pythonjsonlogger import jsonlogger
+
 from asgi_correlation_id import CorrelationIdFilter
+from pythonjsonlogger import jsonlogger
+
 
 def configure_logging():
     logger = logging.getLogger()

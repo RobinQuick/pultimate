@@ -1,5 +1,6 @@
-from pydantic import BaseModel,  Field
-from typing import List, Optional, Dict
+
+from pydantic import BaseModel
+
 
 class RgbColor(BaseModel):
     r: int
@@ -8,16 +9,16 @@ class RgbColor(BaseModel):
 
 class ThemeColors(BaseModel):
     # Simplified theme model
-    dark1: Optional[RgbColor] = None
-    light1: Optional[RgbColor] = None
-    dark2: Optional[RgbColor] = None
-    light2: Optional[RgbColor] = None
-    accent1: Optional[RgbColor] = None
-    accent2: Optional[RgbColor] = None
-    accent3: Optional[RgbColor] = None
-    accent4: Optional[RgbColor] = None
-    accent5: Optional[RgbColor] = None
-    accent6: Optional[RgbColor] = None
+    dark1: RgbColor | None = None
+    light1: RgbColor | None = None
+    dark2: RgbColor | None = None
+    light2: RgbColor | None = None
+    accent1: RgbColor | None = None
+    accent2: RgbColor | None = None
+    accent3: RgbColor | None = None
+    accent4: RgbColor | None = None
+    accent5: RgbColor | None = None
+    accent6: RgbColor | None = None
 
 class ThemeFonts(BaseModel):
     major: str # Heading font
@@ -35,16 +36,16 @@ class PlaceholderSpec(BaseModel):
 class LayoutSpec(BaseModel):
     index: int # Internal index in the master
     name: str
-    placeholders: List[PlaceholderSpec] = []
+    placeholders: list[PlaceholderSpec] = []
 
 class MasterSpec(BaseModel):
     id: int # Internal ID/Index
     name: str # e.g. "Office Theme"
-    layouts: List[LayoutSpec] = []
+    layouts: list[LayoutSpec] = []
 
 class TemplateSpec(BaseModel):
     version: str = "1.0"
     name: str
     theme_colors: ThemeColors
     theme_fonts: ThemeFonts
-    masters: List[MasterSpec] = []
+    masters: list[MasterSpec] = []

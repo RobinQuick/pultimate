@@ -18,8 +18,8 @@ services:
     env: docker
     region: frankfurt
     plan: starter
-    dockerfilePath: Dockerfile
-    dockerContext: apps/api
+    dockerfilePath: apps/api/Dockerfile
+    dockerContext: .
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -77,8 +77,8 @@ services:
     env: docker
     region: frankfurt
     plan: starter
-    dockerfilePath: Dockerfile
-    dockerContext: apps/api
+    dockerfilePath: apps/api/Dockerfile
+    dockerContext: .
     dockerCommand: >
       celery -A worker:celery_app worker
       --loglevel=info
@@ -138,9 +138,6 @@ services:
       npm start
     envVars:
       - key: NEXT_PUBLIC_API_URL
-        fromService:
-          type: web
-          name: pultimate-api
-          property: url
+        sync: false
       - key: NODE_ENV
         value: production

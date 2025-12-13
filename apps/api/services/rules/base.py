@@ -1,18 +1,20 @@
-from pydantic import BaseModel, Field
-from typing import List, Optional, Any
 from abc import ABC, abstractmethod
-from ...schemas.slide_spec import SlideSpec, ElementSpec
+
+from pydantic import BaseModel
+
+from ...schemas.slide_spec import SlideSpec
 from ...schemas.template_spec import TemplateSpec
+
 
 class FindingSpec(BaseModel):
     rule_id: str
     slide_index: int
-    element_id: Optional[str] = None
+    element_id: str | None = None
     severity: str # LOW, MEDIUM, HIGH, CRITICAL
     message: str
-    expected: Optional[str] = None
-    actual: Optional[str] = None
-    suggestion: Optional[str] = None
+    expected: str | None = None
+    actual: str | None = None
+    suggestion: str | None = None
 
 class BaseRule(ABC):
     id: str = "base_rule"
@@ -20,7 +22,7 @@ class BaseRule(ABC):
     severity: str = "MEDIUM"
 
     @abstractmethod
-    def check(self, slide: SlideSpec, template: TemplateSpec) -> List[FindingSpec]:
+    def check(self, slide: SlideSpec, template: TemplateSpec) -> list[FindingSpec]:
         """
         Run the rule logic on a single slide against the template.
         """

@@ -1,12 +1,14 @@
-from pydantic import BaseModel
-from typing import Optional, List, Dict
 from abc import ABC, abstractmethod
+
 from pptx.slide import Slide
+from pydantic import BaseModel
+
 from ...schemas.template_spec import TemplateSpec
 from ...services.rules.base import FindingSpec
 
+
 class FixResult(BaseModel):
-    finding_id: Optional[str] = "custom"
+    finding_id: str | None = "custom"
     element_id: str
     action_taken: str
     status: str = "SUCCESS" # SUCCESS, SKIPPED, FAILED

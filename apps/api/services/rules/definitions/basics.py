@@ -1,8 +1,9 @@
-from typing import List
-from ..base import BaseRule, FindingSpec
-from ..registry import registry
+
 from ....schemas.slide_spec import SlideSpec
 from ....schemas.template_spec import TemplateSpec
+from ..base import BaseRule, FindingSpec
+from ..registry import registry
+
 
 @registry.register
 class FontRule(BaseRule):
@@ -10,7 +11,7 @@ class FontRule(BaseRule):
     description = "Text uses a font not defined in the template theme."
     severity = "HIGH"
 
-    def check(self, slide: SlideSpec, template: TemplateSpec) -> List[FindingSpec]:
+    def check(self, slide: SlideSpec, template: TemplateSpec) -> list[FindingSpec]:
         findings = []
         allowed_fonts = {template.theme_fonts.major.lower(), template.theme_fonts.minor.lower()}
         
@@ -39,7 +40,7 @@ class ImageQualityRule(BaseRule):
     description = "Image quality issues (stretched, low res)."
     severity = "MEDIUM"
 
-    def check(self, slide: SlideSpec, template: TemplateSpec) -> List[FindingSpec]:
+    def check(self, slide: SlideSpec, template: TemplateSpec) -> list[FindingSpec]:
         findings = []
         for elem in slide.elements:
             if elem.type == "IMAGE" and elem.is_stretched:
@@ -59,7 +60,7 @@ class ColorRule(BaseRule):
     description = "Color is outside the corporate palette."
     severity = "MEDIUM"
 
-    def check(self, slide: SlideSpec, template: TemplateSpec) -> List[FindingSpec]:
+    def check(self, slide: SlideSpec, template: TemplateSpec) -> list[FindingSpec]:
         findings = []
         # Construct palette set for O(1) lookup
         # Naive implementation: Exact Hex Match
@@ -73,7 +74,7 @@ class ColorRule(BaseRule):
                  # Convert RGB to Hex for comparison with SlideSpec (which uses Hex)
                  # Assumption: SlideSpec provides Hex without # usually or with. Let's normalize.
                  # RgbColor Pydantic model: r, g, b
-                 hex_val = "{:02x}{:02x}{:02x}".format(c.r, c.g, c.b).upper()
+                 hex_val = f"{c.r:02x}{c.g:02x}{c.b:02x}".upper()
                  palette.add(hex_val)
         
         # Checking logic

@@ -1,15 +1,13 @@
-import subprocess
-import os
-import logging
 import asyncio
-from typing import Optional
+import logging
+import os
 
 logger = logging.getLogger(__name__)
 
 LIBREOFFICE_TIMEOUT = 30 # seconds
 PDFTOPPM_TIMEOUT = 10 # seconds
 
-async def convert_pptx_to_pdf(pptx_path: str, output_dir: str) -> Optional[str]:
+async def convert_pptx_to_pdf(pptx_path: str, output_dir: str) -> str | None:
     """
     Converts PPTX to PDF using LibreOffice headless.
     Returns path to generated PDF or None if failed.
@@ -51,7 +49,7 @@ async def convert_pptx_to_pdf(pptx_path: str, output_dir: str) -> Optional[str]:
         logger.error(f"Conversion error: {e}")
         return None
 
-async def convert_pdf_to_png(pdf_path: str, output_dir: str, page_num: int = 1) -> Optional[bytes]:
+async def convert_pdf_to_png(pdf_path: str, output_dir: str, page_num: int = 1) -> bytes | None:
     """
     Converts specific page of PDF to PNG bytes using pdftoppm.
     page_num is 1-based.

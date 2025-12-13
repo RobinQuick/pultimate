@@ -1,8 +1,15 @@
-from pptx import Presentation
-from pptx.enum.shapes import MSO_SHAPE_TYPE
-from pptx.shapes.placeholder import BasePlaceholder
-from ..schemas.template_spec import TemplateSpec,  MasterSpec, LayoutSpec, PlaceholderSpec, ThemeColors, ThemeFonts, RgbColor
 import logging
+
+from pptx import Presentation
+
+from ..schemas.template_spec import (
+    LayoutSpec,
+    MasterSpec,
+    PlaceholderSpec,
+    TemplateSpec,
+    ThemeColors,
+    ThemeFonts,
+)
 
 logger = logging.getLogger(__name__)
 

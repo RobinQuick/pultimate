@@ -1,6 +1,6 @@
-import pytest
-from pptx import Presentation
 from apps.api.services.ingestion import ingestor
+from pptx import Presentation
+
 
 def create_synthetic_template(path):
     prs = Presentation()

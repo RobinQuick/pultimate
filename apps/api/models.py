@@ -1,8 +1,8 @@
-from enum import Enum
-from pydantic import BaseModel
-from typing import List, Optional
 from datetime import datetime
-import uuid
+from enum import Enum
+
+from pydantic import BaseModel
+
 
 class JobStatus(str, Enum):
     CREATED = "CREATED"
@@ -29,7 +29,7 @@ class AuditIssue(BaseModel):
 class SlideSummary(BaseModel):
     index: int
     status: SlideStatus
-    issues: List[AuditIssue] = []
+    issues: list[AuditIssue] = []
 
 class JobState(BaseModel):
     id: str
@@ -37,5 +37,5 @@ class JobState(BaseModel):
     status: JobStatus
     original_filename: str
     template_filename: str
-    summary: Optional[List[SlideSummary]] = []
-    error: Optional[str] = None
+    summary: list[SlideSummary] | None = []
+    error: str | None = None

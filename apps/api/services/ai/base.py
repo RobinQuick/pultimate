@@ -1,13 +1,14 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional
+
+from ...schemas.ai_rebuild import RebuildPlan, SlideIntent
 from ...schemas.slide_spec import SlideSpec
-from ...schemas.ai_rebuild import SlideIntent, RebuildPlan
 from ...schemas.template_spec import TemplateSpec
+
 
 class BaseAIProvider(ABC):
     
     @abstractmethod
-    async def classify_intent(self, slide_spec: SlideSpec, image_bytes: Optional[bytes] = None) -> SlideIntent:
+    async def classify_intent(self, slide_spec: SlideSpec, image_bytes: bytes | None = None) -> SlideIntent:
         """
         Determines the semantic intent of a slide based on its content and visual appearance.
         """
@@ -27,7 +28,7 @@ class BaseAIProvider(ABC):
         pass
 
 class MockAIProvider(BaseAIProvider):
-    async def classify_intent(self, slide_spec: SlideSpec, image_bytes: Optional[bytes] = None) -> SlideIntent:
+    async def classify_intent(self, slide_spec: SlideSpec, image_bytes: bytes | None = None) -> SlideIntent:
         # Simple heuristic rule-based mock
         # If > 5 text boxes -> Content 2 Col?
         return SlideIntent(

@@ -1,7 +1,7 @@
-import pytest
+from apps.api.services.parser import deck_parser
 from pptx import Presentation
 from pptx.util import Pt
-from apps.api.services.parser import deck_parser
+
 
 def create_synthetic_deck(path):
     prs = Presentation()
