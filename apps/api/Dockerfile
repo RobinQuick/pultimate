@@ -12,9 +12,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
     curl \
-    libreoffice-headless-nogui \
-    libreoffice-java-common \
-    default-jre \
+    libreoffice \
+    default-jre-headless \
     poppler-utils \
     fonts-liberation \
     fonts-dejavu \
