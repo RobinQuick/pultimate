@@ -1,44 +1,12 @@
-from contextlib import asynccontextmanager
-
+"""Minimal FastAPI app for testing Fly.io deployment."""
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 
-from .api.v1 import analysis, auth, decks, templates
-from .core.config import settings
-from .database import init_db
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Initialize DB tables
-    await init_db()
-    yield
-
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    lifespan=lifespan,
-    version="2.0.0"
-)
-
-# CORS configuration
-origins = [
-    "http://localhost:3000",
-    "http://localhost",
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-app.include_router(auth.router, prefix="/api/v1")
-app.include_router(decks.router, prefix="/api/v1")
-app.include_router(analysis.router, prefix="/api/v1")
-app.include_router(templates.router, prefix="/api/v1")
+app = FastAPI(title="Pultimate API", version="2.0.0")
 
 @app.get("/health")
-async def health_check():
+def health_check():
     return {"status": "ok", "version": "2.0.0"}
+
+@app.get("/")
+def root():
+    return {"message": "Pultimate API is running"}
