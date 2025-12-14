@@ -1,7 +1,7 @@
 from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile
 
-from ..models import JobState
-from ..services.jobs import job_manager
+from models import JobState
+from services.jobs import job_manager
 
 router = APIRouter(prefix="/api/v1/jobs", tags=["jobs"])
 

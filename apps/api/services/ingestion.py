@@ -2,7 +2,7 @@ import logging
 
 from pptx import Presentation
 
-from ..schemas.template_spec import (
+from schemas.template_spec import (
     LayoutSpec,
     MasterSpec,
     PlaceholderSpec,

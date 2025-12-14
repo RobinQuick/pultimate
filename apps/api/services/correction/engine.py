@@ -2,8 +2,8 @@ import logging
 
 from pptx import Presentation
 
-from ...schemas.template_spec import TemplateSpec
-from ...services.rules.base import FindingSpec
+from schemas.template_spec import TemplateSpec
+from services.rules.base import FindingSpec
 from .base import BaseFixer, FixResult
 
 logger = logging.getLogger(__name__)

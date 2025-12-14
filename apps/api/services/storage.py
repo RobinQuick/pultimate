@@ -4,7 +4,7 @@ import aioboto3
 from botocore.config import Config
 from fastapi import UploadFile
 
-from ..core.config import settings
+from core.config import settings
 
 
 class StorageService:

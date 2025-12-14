@@ -3,7 +3,7 @@ import logging
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
 
-from ..schemas.slide_spec import BoundingBox, DeckSpec, ElementSpec, SlideSpec, SlideStats, TextStyle
+from schemas.slide_spec import BoundingBox, DeckSpec, ElementSpec, SlideSpec, SlideStats, TextStyle
 
 logger = logging.getLogger(__name__)
 

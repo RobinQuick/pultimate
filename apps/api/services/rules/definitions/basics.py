@@ -1,8 +1,8 @@
 
-from ....schemas.slide_spec import SlideSpec
-from ....schemas.template_spec import TemplateSpec
-from ..base import BaseRule, FindingSpec
-from ..registry import registry
+from schemas.slide_spec import SlideSpec
+from schemas.template_spec import TemplateSpec
+from base import BaseRule, FindingSpec
+from registry import registry
 
 
 @registry.register

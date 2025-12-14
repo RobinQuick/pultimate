@@ -5,13 +5,13 @@ import tempfile
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ...core.config import settings
-from ...database import get_db
-from ...deps import get_current_user
-from ...models.sql_models import Template, TemplateVersion, User
-from ...schemas.template_spec import TemplateSpec
-from ...services.ingestion import ingestor
-from ...services.storage import storage
+from core.config import settings
+from database import get_db
+from deps import get_current_user
+from models.sql_models import Template, TemplateVersion, User
+from schemas.template_spec import TemplateSpec
+from services.ingestion import ingestor
+from services.storage import storage
 
 router = APIRouter(prefix="/templates", tags=["templates"])
 

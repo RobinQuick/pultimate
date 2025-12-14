@@ -3,8 +3,8 @@ from abc import ABC, abstractmethod
 from pptx.slide import Slide
 from pydantic import BaseModel
 
-from ...schemas.template_spec import TemplateSpec
-from ...services.rules.base import FindingSpec
+from schemas.template_spec import TemplateSpec
+from services.rules.base import FindingSpec
 
 
 class FixResult(BaseModel):

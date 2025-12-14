@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
-from ...services.correction.engine import restyle_engine
-from ...services.correction import fixers # Import to register
-from ...deps import get_current_user
-from ...models.sql_models import User
-from ...services.rules.base import FindingSpec
-from ...services.rules.registry import registry
-from ...schemas.template_spec import TemplateSpec
+from services.correction.engine import restyle_engine
+from services.correction import fixers # Import to register
+from deps import get_current_user
+from models.sql_models import User
+from services.rules.base import FindingSpec
+from services.rules.registry import registry
+from schemas.template_spec import TemplateSpec
 from typing import List
 import os
 import shutil

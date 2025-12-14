@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 
-from ...schemas.ai_rebuild import RebuildPlan, SlideIntent
-from ...schemas.slide_spec import SlideSpec
-from ...schemas.template_spec import TemplateSpec
+from schemas.ai_rebuild import RebuildPlan, SlideIntent
+from schemas.slide_spec import SlideSpec
+from schemas.template_spec import TemplateSpec
 
 
 class BaseAIProvider(ABC):

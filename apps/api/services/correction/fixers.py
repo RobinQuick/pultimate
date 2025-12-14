@@ -1,8 +1,8 @@
 from pptx.dml.color import RGBColor
 from pptx.slide import Slide
 
-from ...schemas.template_spec import TemplateSpec
-from ...services.rules.base import FindingSpec
+from schemas.template_spec import TemplateSpec
+from services.rules.base import FindingSpec
 from .base import BaseFixer, FixResult
 from .engine import FixerRegistry
 
