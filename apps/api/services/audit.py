@@ -1,7 +1,7 @@
 from schemas.slide_spec import DeckSpec
 from schemas.template_spec import TemplateSpec
-from .rules.base import FindingSpec
-from .rules.registry import registry
+from rules.base import FindingSpec
+from rules.registry import registry
 
 # Import definitions to trigger registration
 

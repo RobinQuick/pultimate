@@ -1,10 +1,10 @@
 
 from celery import Celery
 
-from .core.config import settings
+from core.config import settings
 
 # Storage service import mocking or real
-# from .services.storage import storage
+# from services.storage import storage
 
 celery_app = Celery("worker", broker=settings.REDIS_URL, backend=settings.REDIS_URL)
 

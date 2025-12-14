@@ -7,8 +7,8 @@ from datetime import datetime
 
 from fastapi import UploadFile
 
-from .audit import audit_engine
-from .models import JobState, JobStatus
+from audit import audit_engine
+from models import JobState, JobStatus
 
 # Configuration
 DATA_DIR = "/data/workspaces"

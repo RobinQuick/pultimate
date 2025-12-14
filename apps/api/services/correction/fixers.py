@@ -3,8 +3,8 @@ from pptx.slide import Slide
 
 from schemas.template_spec import TemplateSpec
 from services.rules.base import FindingSpec
-from .base import BaseFixer, FixResult
-from .engine import FixerRegistry
+from base import BaseFixer, FixResult
+from engine import FixerRegistry
 
 
 def find_shape_by_id(slide: Slide, shape_id: str):
