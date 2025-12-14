@@ -1,36 +1,93 @@
-"""Pultimate API - FastAPI Production App."""
+"""Pultimate API - FastAPI with graceful import debugging."""
+import sys
+import traceback
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.v1 import analysis, auth, decks, templates
-from core.config import settings
-from database import init_db
+# Debug: Print path to help diagnose
+print(f"Python path: {sys.path}")
+print(f"Current working directory: {__file__}")
+
+# Try imports one by one to identify the failing module
+IMPORT_ERRORS = []
+FULL_MODE = True
+
+try:
+    from core.config import settings
+    print("✓ core.config imported")
+except ImportError as e:
+    IMPORT_ERRORS.append(f"core.config: {e}")
+    print(f"✗ core.config failed: {e}")
+    settings = type('obj', (object,), {'PROJECT_NAME': 'Pultimate API'})()
+    FULL_MODE = False
+
+try:
+    from database import init_db
+    print("✓ database imported")
+except ImportError as e:
+    IMPORT_ERRORS.append(f"database: {e}")
+    print(f"✗ database failed: {e}")
+    async def init_db(): pass
+    FULL_MODE = False
+
+try:
+    from api.v1 import auth
+    print("✓ api.v1.auth imported")
+except ImportError as e:
+    IMPORT_ERRORS.append(f"api.v1.auth: {e}")
+    print(f"✗ api.v1.auth failed: {e}")
+    traceback.print_exc()
+    auth = None
+    FULL_MODE = False
+
+try:
+    from api.v1 import decks
+    print("✓ api.v1.decks imported")
+except ImportError as e:
+    IMPORT_ERRORS.append(f"api.v1.decks: {e}")
+    print(f"✗ api.v1.decks failed: {e}")
+    decks = None
+    FULL_MODE = False
+
+try:
+    from api.v1 import analysis
+    print("✓ api.v1.analysis imported")
+except ImportError as e:
+    IMPORT_ERRORS.append(f"api.v1.analysis: {e}")
+    print(f"✗ api.v1.analysis failed: {e}")
+    analysis = None
+    FULL_MODE = False
+
+try:
+    from api.v1 import templates
+    print("✓ api.v1.templates imported")
+except ImportError as e:
+    IMPORT_ERRORS.append(f"api.v1.templates: {e}")
+    print(f"✗ api.v1.templates failed: {e}")
+    templates = None
+    FULL_MODE = False
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize DB tables
-    try:
-        await init_db()
-    except Exception as e:
-        print(f"Warning: Database initialization skipped: {e}")
+    if FULL_MODE:
+        try:
+            await init_db()
+        except Exception as e:
+            print(f"Warning: Database initialization skipped: {e}")
     yield
 
 
 app = FastAPI(
-    title=settings.PROJECT_NAME,
+    title=getattr(settings, 'PROJECT_NAME', 'Pultimate API'),
     lifespan=lifespan,
     version="2.0.0"
 )
 
 # CORS configuration
-origins = [
-    "http://localhost:3000",
-    "http://localhost",
-    "*",  # Allow all for POC
-]
+origins = ["*"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -40,17 +97,27 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth.router, prefix="/api/v1")
-app.include_router(decks.router, prefix="/api/v1")
-app.include_router(analysis.router, prefix="/api/v1")
-app.include_router(templates.router, prefix="/api/v1")
+# Conditionally add routers
+if auth:
+    app.include_router(auth.router, prefix="/api/v1")
+if decks:
+    app.include_router(decks.router, prefix="/api/v1")
+if analysis:
+    app.include_router(analysis.router, prefix="/api/v1")
+if templates:
+    app.include_router(templates.router, prefix="/api/v1")
 
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "version": "2.0.0", "mode": "full"}
+    return {
+        "status": "ok",
+        "version": "2.0.0",
+        "mode": "full" if FULL_MODE else "minimal",
+        "import_errors": IMPORT_ERRORS if IMPORT_ERRORS else None
+    }
 
 
 @app.get("/")
 def root():
-    return {"message": "Pultimate API is running", "mode": "full"}
+    return {"message": "Pultimate API is running", "mode": "full" if FULL_MODE else "minimal"}
