@@ -23,4 +23,4 @@ kill_timeout = 120
   cpus = 1
 
 [processes]
-  worker = "cd /app && celery -A worker:celery_app worker --loglevel=info --concurrency=2"
+  worker = "celery -A worker:celery_app worker --loglevel=info --concurrency=2"
