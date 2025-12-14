@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE

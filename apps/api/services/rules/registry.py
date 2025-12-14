@@ -1,5 +1,5 @@
 
-from base import BaseRule
+from services.rules.base import BaseRule
 
 
 class RuleRegistry:
