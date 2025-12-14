@@ -59,9 +59,53 @@ async def get_db():
 
 
 async def init_db():
+    """Initialize database schema and seed default data."""
     # Import all models to register them with Base.metadata before create_all
-    import models.sql_models  # noqa: F401 - Force model registration
+    import models.sql_models as models  # noqa: F401 - Force model registration
     
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    print(f"✓ Database initialized: {len(Base.metadata.tables)} tables created/verified")
+    print(f"✓ Database schema: {len(Base.metadata.tables)} tables created/verified")
+    
+    # Seed default tenant and workspace (for POC - required for FK constraints)
+    async with AsyncSessionLocal() as session:
+        try:
+            from sqlalchemy import select
+            
+            # Check if default tenant exists
+            result = await session.execute(
+                select(models.Tenant).where(models.Tenant.id == "default-tenant")
+            )
+            tenant = result.scalars().first()
+            
+            if not tenant:
+                tenant = models.Tenant(
+                    id="default-tenant",
+                    name="Default Tenant",
+                    slug="default"
+                )
+                session.add(tenant)
+                await session.flush()
+                print("✓ Created default tenant")
+            
+            # Check if default workspace exists
+            result = await session.execute(
+                select(models.Workspace).where(models.Workspace.id == "default-ws")
+            )
+            workspace = result.scalars().first()
+            
+            if not workspace:
+                workspace = models.Workspace(
+                    id="default-ws",
+                    tenant_id="default-tenant",
+                    name="Default Workspace"
+                )
+                session.add(workspace)
+                print("✓ Created default workspace")
+            
+            await session.commit()
+            print("✓ Database seeding complete")
+        except Exception as e:
+            await session.rollback()
+            print(f"⚠ Seeding error (may already exist): {e}")
+
