@@ -184,5 +184,7 @@ async def get_template_download_url(
     if not version:
         raise HTTPException(status_code=404, detail="Template version not found")
     
-    url = await storage.generate_presigned_url(version.s3_key_potx)
-    return {"download_url": url}
+    # Construct filename from template name
+    filename = f"template_{template_id}.pptx"
+    url = await storage.generate_presigned_url(version.s3_key_potx, filename=filename)
+    return {"download_url": url, "filename": filename, "expires_in": 900}

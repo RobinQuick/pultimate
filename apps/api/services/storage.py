@@ -162,29 +162,37 @@ class StorageService:
     async def generate_presigned_url(
         self,
         key: str,
-        expiration: int = 3600,
-        bucket: str = None
+        expiration: int = 900,  # 15 minutes (secure default)
+        bucket: str = None,
+        filename: str = None
     ) -> str:
         """Generate a presigned URL for downloading a file.
         
         Args:
             key: S3 object key
-            expiration: URL expiration time in seconds
+            expiration: URL expiration time in seconds (default: 15 min)
             bucket: Bucket name (uses default if not provided)
+            filename: Optional filename for Content-Disposition header
             
         Returns:
             Presigned URL string
         """
         bucket = bucket or self.bucket
         
+        params = {'Bucket': bucket, 'Key': key}
+        
+        # Add Content-Disposition for attachment download
+        if filename:
+            params['ResponseContentDisposition'] = f'attachment; filename="{filename}"'
+        
         try:
             async with self.session.client("s3", **self._get_client_kwargs()) as s3:
                 url = await s3.generate_presigned_url(
                     'get_object',
-                    Params={'Bucket': bucket, 'Key': key},
+                    Params=params,
                     ExpiresIn=expiration
                 )
-                logger.debug(f"Generated presigned URL for {key}")
+                logger.info(f"Generated presigned URL for {key} (expires in {expiration}s)")
                 return url
         except ClientError as e:
             logger.exception(f"Failed to generate presigned URL for {key}")

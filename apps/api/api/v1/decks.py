@@ -130,5 +130,5 @@ async def get_deck_download_url(
     if not deck_file:
         raise HTTPException(status_code=404, detail="Deck file not found")
     
-    url = await storage.generate_presigned_url(deck_file.s3_key)
-    return {"download_url": url, "filename": deck_file.filename}
+    url = await storage.generate_presigned_url(deck_file.s3_key, filename=deck_file.filename)
+    return {"download_url": url, "filename": deck_file.filename, "expires_in": 900}
