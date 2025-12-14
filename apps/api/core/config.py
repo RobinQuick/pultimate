@@ -1,5 +1,5 @@
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -7,11 +7,21 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Pultimate API"
     API_V1_STR: str = "/api/v1"
     
-    # DB - Uses DATABASE_URL env var (Fly.io standard), falls back to SQLALCHEMY_DATABASE_URI or default
+    # DB - Uses DATABASE_URL env var (Fly.io standard), transforms to async driver
     SQLALCHEMY_DATABASE_URI: str = Field(
         default="postgresql+asyncpg://pultimate:pultimate@localhost:5432/pultimate",
         alias="DATABASE_URL"
     )
+    
+    @field_validator("SQLALCHEMY_DATABASE_URI", mode="after")
+    @classmethod
+    def ensure_async_driver(cls, v: str) -> str:
+        """Transform postgresql:// to postgresql+asyncpg:// for async SQLAlchemy."""
+        if v.startswith("postgres://"):
+            v = v.replace("postgres://", "postgresql+asyncpg://", 1)
+        elif v.startswith("postgresql://") and "+asyncpg" not in v:
+            v = v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return v
     
     # Security
     SECRET_KEY: str = "secret"
@@ -33,5 +43,6 @@ class Settings(BaseSettings):
 
     class Config:
         case_sensitive = True
+        populate_by_name = True
 
 settings = Settings()
