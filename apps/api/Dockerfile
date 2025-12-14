@@ -1,7 +1,5 @@
 FROM python:3.12-slim
 
-WORKDIR /app
-
 # Install system dependencies
 # libreoffice: for pptx -> pdf
 # poppler-utils: for pdf -> png
@@ -22,12 +20,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Create non-root user
 RUN useradd -m -u 1000 appuser
 
-# Install python dependencies
-COPY apps/api/requirements.txt .
+# Install python dependencies first (cached layer)
+WORKDIR /app
+COPY apps/api/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code as package
-COPY apps/api/ /app/
+# Copy application code to /app/apps/api
+COPY apps/api/ /app/apps/api/
 
 # Set ownership to non-root user
 RUN chown -R appuser:appuser /app
@@ -35,15 +34,18 @@ RUN chown -R appuser:appuser /app
 # Switch to non-root user
 USER appuser
 
-# Environment path adjustment - /app is the package root
-ENV PYTHONPATH=/app
+# Set PYTHONPATH to the api package root
+ENV PYTHONPATH=/app/apps/api
 ENV PATH="/home/appuser/.local/bin:$PATH"
 
-EXPOSE 8000
+# Set WORKDIR to the api package
+WORKDIR /app/apps/api
+
+EXPOSE 8080
 
 # Healthcheck
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:8080/health || exit 1
 
-# Default command (overridden in docker-compose/render.yaml)
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Default command
+CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
