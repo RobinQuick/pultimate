@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Debug: Print path to help diagnose
 print(f"Python path: {sys.path}")
-print(f"Current working directory: {__file__}")
+print(f"Current file: {__file__}")
 
 # Try imports one by one to identify the failing module
 IMPORT_ERRORS = []
@@ -17,25 +17,27 @@ FULL_MODE = True
 try:
     from core.config import settings
     print("✓ core.config imported")
-except ImportError as e:
+except Exception as e:
     IMPORT_ERRORS.append(f"core.config: {e}")
     print(f"✗ core.config failed: {e}")
+    traceback.print_exc()
     settings = type('obj', (object,), {'PROJECT_NAME': 'Pultimate API'})()
     FULL_MODE = False
 
 try:
     from database import init_db
     print("✓ database imported")
-except ImportError as e:
+except Exception as e:
     IMPORT_ERRORS.append(f"database: {e}")
     print(f"✗ database failed: {e}")
+    traceback.print_exc()
     async def init_db(): pass
     FULL_MODE = False
 
 try:
     from api.v1 import auth
     print("✓ api.v1.auth imported")
-except ImportError as e:
+except Exception as e:
     IMPORT_ERRORS.append(f"api.v1.auth: {e}")
     print(f"✗ api.v1.auth failed: {e}")
     traceback.print_exc()
@@ -45,27 +47,30 @@ except ImportError as e:
 try:
     from api.v1 import decks
     print("✓ api.v1.decks imported")
-except ImportError as e:
+except Exception as e:
     IMPORT_ERRORS.append(f"api.v1.decks: {e}")
     print(f"✗ api.v1.decks failed: {e}")
+    traceback.print_exc()
     decks = None
     FULL_MODE = False
 
 try:
     from api.v1 import analysis
     print("✓ api.v1.analysis imported")
-except ImportError as e:
+except Exception as e:
     IMPORT_ERRORS.append(f"api.v1.analysis: {e}")
     print(f"✗ api.v1.analysis failed: {e}")
+    traceback.print_exc()
     analysis = None
     FULL_MODE = False
 
 try:
     from api.v1 import templates
     print("✓ api.v1.templates imported")
-except ImportError as e:
+except Exception as e:
     IMPORT_ERRORS.append(f"api.v1.templates: {e}")
     print(f"✗ api.v1.templates failed: {e}")
+    traceback.print_exc()
     templates = None
     FULL_MODE = False
 
