@@ -6,10 +6,11 @@ import time
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
-import os
+
+from .core.config import settings
 
 # Handle case where DATABASE_URL is not set (skip migrations)
-DATABASE_URL = os.getenv("DATABASE_URL", "")
+DATABASE_URL = getattr(settings, 'SQLALCHEMY_DATABASE_URI', None) or os.getenv("DATABASE_URL", "")
 
 
 # --- JSON Logging Setup ---

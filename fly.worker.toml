@@ -5,7 +5,10 @@ kill_signal = "SIGTERM"
 kill_timeout = 120
 
 [build]
-  dockerfile = "apps/api/Dockerfile"
+  dockerfile = "Dockerfile"
+  build_target = ""
+  [build.settings]
+    context = "apps/api"
 
 [env]
   ENV = "production"

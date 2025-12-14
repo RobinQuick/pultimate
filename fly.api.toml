@@ -5,7 +5,10 @@ kill_signal = "SIGINT"
 kill_timeout = 30
 
 [build]
-  dockerfile = "apps/api/Dockerfile"
+  dockerfile = "Dockerfile"
+  build_target = ""
+  [build.settings]
+    context = "apps/api"
 
 [env]
   PORT = "8000"
