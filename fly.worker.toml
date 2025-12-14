@@ -5,10 +5,7 @@ kill_signal = "SIGTERM"
 kill_timeout = 120
 
 [build]
-  dockerfile = "Dockerfile"
-  build_target = ""
-  [build.settings]
-    context = "apps/api"
+  dockerfile = "apps/api/Dockerfile"
 
 [env]
   ENV = "production"
@@ -26,4 +23,4 @@ kill_timeout = 120
   cpus = 1
 
 [processes]
-  worker = "celery -A worker:celery_app worker --loglevel=info --concurrency=2"
+  worker = "cd /app && celery -A worker:celery_app worker --loglevel=info --concurrency=2"

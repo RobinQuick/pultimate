@@ -5,10 +5,7 @@ kill_signal = "SIGINT"
 kill_timeout = 30
 
 [build]
-  dockerfile = "Dockerfile"
-  build_target = ""
-  [build.settings]
-    context = "apps/api"
+  dockerfile = "apps/api/Dockerfile"
 
 [env]
   PORT = "8000"
@@ -42,4 +39,4 @@ kill_timeout = 30
   cpus = 1
 
 [processes]
-  app = "python prestart.py && uvicorn main:app --host 0.0.0.0 --port 8000"
+  app = "cd /app && python -m uvicorn main:app --host 0.0.0.0 --port 8000"

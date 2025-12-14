@@ -23,11 +23,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN useradd -m -u 1000 appuser
 
 # Install python dependencies
-COPY requirements.txt .
+COPY apps/api/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY . .
+# Copy application code as package
+COPY apps/api/ /app/
 
 # Set ownership to non-root user
 RUN chown -R appuser:appuser /app
@@ -35,7 +35,7 @@ RUN chown -R appuser:appuser /app
 # Switch to non-root user
 USER appuser
 
-# Environment path adjustment
+# Environment path adjustment - /app is the package root
 ENV PYTHONPATH=/app
 ENV PATH="/home/appuser/.local/bin:$PATH"
 
