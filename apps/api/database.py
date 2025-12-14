@@ -14,5 +14,9 @@ async def get_db():
         yield session
 
 async def init_db():
+    # Import all models to register them with Base.metadata before create_all
+    import models.sql_models  # noqa: F401 - Force model registration
+    
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    print(f"✓ Database initialized: {len(Base.metadata.tables)} tables created/verified")
