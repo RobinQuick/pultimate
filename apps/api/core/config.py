@@ -1,4 +1,5 @@
 
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
@@ -6,8 +7,11 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Pultimate API"
     API_V1_STR: str = "/api/v1"
     
-    # DB
-    SQLALCHEMY_DATABASE_URI: str = "postgresql+asyncpg://pultimate:pultimate@localhost:5432/pultimate"
+    # DB - Uses DATABASE_URL env var (Fly.io standard), falls back to SQLALCHEMY_DATABASE_URI or default
+    SQLALCHEMY_DATABASE_URI: str = Field(
+        default="postgresql+asyncpg://pultimate:pultimate@localhost:5432/pultimate",
+        alias="DATABASE_URL"
+    )
     
     # Security
     SECRET_KEY: str = "secret"
