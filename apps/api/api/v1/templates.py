@@ -1,3 +1,4 @@
+"""Template upload and management endpoints."""
 import logging
 import os
 import shutil
@@ -8,7 +9,6 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.config import settings
 from database import get_db
 from deps import get_current_user
 from models.sql_models import Template, TemplateVersion, User
@@ -28,27 +28,32 @@ async def create_template(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Upload and process a PowerPoint template."""
-    # Validate file type
-    if not file.filename.lower().endswith(('.potx', '.pptx')):
-        raise HTTPException(status_code=400, detail="Only .potx/.pptx files allowed")
-
+    """Upload and process a PowerPoint template.
+    
+    - Accepts .potx, .pptx files only
+    - Maximum file size: 50MB (configurable)
+    - Files stored in S3-compatible storage with 'templates/' prefix
+    - Template is automatically ingested and published as version 1
+    """
     # Use default workspace for POC
     workspace_id = "default-ws"
+    tmp_path = None
     
     try:
-        # 1. Create Template container
+        # 1. Create Template container first to get ID
         new_template = Template(
             workspace_id=workspace_id,
             name=name
         )
         db.add(new_template)
-        await db.flush()
+        await db.flush()  # Get the ID without committing
         
-        # 2. Upload to S3
-        s3_key = await storage.upload_file(file, settings.S3_BUCKET_TEMPLATES)
+        logger.info(f"Created template record: {new_template.id} for user {current_user.email}")
         
-        # 3. Ingest and process template
+        # 2. Upload to S3 with template ID as filename
+        s3_key = await storage.upload_template(file, template_id=new_template.id)
+        
+        # 3. Ingest and process template (requires local file for python-pptx)
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pptx") as tmp:
             file.file.seek(0)
             shutil.copyfileobj(file.file, tmp)
@@ -56,8 +61,13 @@ async def create_template(
         
         try:
             spec = ingestor.ingest(tmp_path)
-        finally:
-            os.unlink(tmp_path)
+            logger.info(f"Template ingested successfully: {new_template.id}")
+        except Exception as e:
+            logger.exception(f"Template ingestion failed: {e}")
+            raise HTTPException(
+                status_code=422,
+                detail=f"Template processing failed: {str(e)}"
+            ) from e
         
         # 4. Create TemplateVersion
         version = TemplateVersion(
@@ -71,25 +81,108 @@ async def create_template(
         db.add(version)
         await db.commit()
         
+        logger.info(f"Template created and published: {new_template.id} -> {s3_key}")
         return spec
     
     except IntegrityError as e:
         await db.rollback()
-        logger.exception("Database integrity error on template creation")
+        logger.exception(f"Database integrity error on template creation")
         raise HTTPException(
             status_code=400,
             detail="Database constraint violation. Ensure workspace exists."
         ) from e
-    except AttributeError as e:
-        logger.exception("Configuration error")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Server configuration error: {e}"
-        ) from e
+    except HTTPException:
+        await db.rollback()
+        raise
     except Exception as e:
         await db.rollback()
-        logger.exception("Unexpected error on template creation")
+        logger.exception(f"Unexpected error on template creation: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Template creation failed: {str(e)}"
         ) from e
+    finally:
+        # Clean up temp file
+        if tmp_path and os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+
+
+@router.get("/")
+async def list_templates(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """List all templates in the default workspace."""
+    from sqlalchemy import select
+    
+    result = await db.execute(
+        select(Template).where(Template.workspace_id == "default-ws")
+    )
+    templates = result.scalars().all()
+    
+    return [
+        {
+            "id": t.id,
+            "name": t.name,
+            "is_archived": t.is_archived
+        }
+        for t in templates
+    ]
+
+
+@router.get("/{template_id}")
+async def get_template(
+    template_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get a specific template with its latest version."""
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+    
+    result = await db.execute(
+        select(Template)
+        .where(Template.id == template_id)
+        .options(selectinload(Template.versions))
+    )
+    template = result.scalars().first()
+    
+    if not template:
+        raise HTTPException(status_code=404, detail="Template not found")
+    
+    # Get latest version
+    latest_version = max(template.versions, key=lambda v: v.version_num) if template.versions else None
+    
+    return {
+        "id": template.id,
+        "name": template.name,
+        "is_archived": template.is_archived,
+        "latest_version": {
+            "version_num": latest_version.version_num,
+            "status": latest_version.status,
+            "config": latest_version.config_json
+        } if latest_version else None
+    }
+
+
+@router.get("/{template_id}/download-url")
+async def get_template_download_url(
+    template_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get a presigned URL to download the template file."""
+    from sqlalchemy import select
+    
+    result = await db.execute(
+        select(TemplateVersion)
+        .where(TemplateVersion.template_id == template_id)
+        .order_by(TemplateVersion.version_num.desc())
+    )
+    version = result.scalars().first()
+    
+    if not version:
+        raise HTTPException(status_code=404, detail="Template version not found")
+    
+    url = await storage.generate_presigned_url(version.s3_key_potx)
+    return {"download_url": url}
