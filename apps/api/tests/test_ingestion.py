@@ -1,4 +1,4 @@
-from apps.api.services.ingestion import ingestor
+from services.ingestion import ingestor
 from pptx import Presentation
 
 

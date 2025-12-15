@@ -1,6 +1,6 @@
-from apps.api.schemas.template_spec import RgbColor, TemplateSpec, ThemeColors, ThemeFonts
-from apps.api.services.correction.engine import restyle_engine
-from apps.api.services.rules.base import FindingSpec
+from schemas.template_spec import RgbColor, TemplateSpec, ThemeColors, ThemeFonts
+from services.correction.engine import restyle_engine
+from services.rules.base import FindingSpec
 from pptx import Presentation
 
 

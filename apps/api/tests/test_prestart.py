@@ -1,10 +1,10 @@
 from unittest.mock import MagicMock, patch
 
-from apps.api.prestart import main, wait_for_db
+from prestart import main, wait_for_db
 from sqlalchemy.exc import OperationalError
 
 
-@patch("apps.api.prestart.create_engine")
+@patch("prestart.create_engine")
 @patch("time.sleep")
 def test_wait_for_db_success(mock_sleep, mock_create_engine):
     mock_engine = MagicMock()
@@ -17,7 +17,7 @@ def test_wait_for_db_success(mock_sleep, mock_create_engine):
     mock_conn.execute.assert_called_once()  # Should execute SELECT 1
 
 
-@patch("apps.api.prestart.create_engine")
+@patch("prestart.create_engine")
 @patch("time.sleep")
 def test_wait_for_db_failure_retry(mock_sleep, mock_create_engine):
     mock_engine = MagicMock()
@@ -29,8 +29,8 @@ def test_wait_for_db_failure_retry(mock_sleep, mock_create_engine):
     assert mock_sleep.call_count == 1
 
 
-@patch("apps.api.prestart.init_db_connection")
-@patch("apps.api.prestart.subprocess.run")
+@patch("prestart.init_db_connection")
+@patch("prestart.subprocess.run")
 def test_full_flow(mock_subprocess, mock_init_db):
     mock_engine = MagicMock()
     mock_init_db.return_value = mock_engine

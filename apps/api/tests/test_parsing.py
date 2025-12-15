@@ -1,4 +1,4 @@
-from apps.api.services.parser import deck_parser
+from services.parser import deck_parser
 from pptx import Presentation
 from pptx.util import Pt
 

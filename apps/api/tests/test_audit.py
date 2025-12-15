@@ -1,6 +1,6 @@
-from apps.api.schemas.slide_spec import DeckSpec, ElementSpec, SlideSpec, SlideStats, TextStyle
-from apps.api.schemas.template_spec import RgbColor, TemplateSpec, ThemeColors, ThemeFonts
-from apps.api.services.audit import audit_engine
+from schemas.slide_spec import DeckSpec, ElementSpec, SlideSpec, SlideStats, TextStyle
+from schemas.template_spec import RgbColor, TemplateSpec, ThemeColors, ThemeFonts
+from services.audit import audit_engine
 
 
 def test_audit_engine():
