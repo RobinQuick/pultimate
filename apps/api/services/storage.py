@@ -9,7 +9,7 @@ Supports any S3-compatible service:
 
 import logging
 import uuid
-
+import boto3
 import aioboto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
@@ -264,6 +264,54 @@ class StorageService:
         except ClientError as e:
             logger.exception(f"Failed to upload to {key}")
             raise HTTPException(status_code=500, detail=f"Failed to upload: {e}") from e
+
+    # =========================================================================
+    # SYNC METHODS (For Worker)
+    # =========================================================================
+
+    def _get_sync_client(self):
+        """Get sync boto3 client."""
+        return boto3.client(
+            "s3",
+            endpoint_url=settings.S3_ENDPOINT_URL,
+            aws_access_key_id=settings.S3_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.S3_SECRET_ACCESS_KEY,
+            region_name=settings.S3_REGION,
+            config=self.config,
+        )
+
+    def download_file_sync(self, key: str, local_path: str, bucket: str = None) -> None:
+        """Download file synchronously (for worker)."""
+        bucket = bucket or self.bucket
+        s3 = self._get_sync_client()
+        try:
+            s3.download_file(bucket, key, local_path)
+            logger.info(f"Downloaded (sync): s3://{bucket}/{key} -> {local_path}")
+        except ClientError as e:
+            logger.exception(f"Failed to download {key}")
+            raise RuntimeError(f"Failed to download file: {e}") from e
+
+    def upload_bytes_sync(self, data: bytes, key: str, bucket: str = None) -> str:
+        """Upload bytes synchronously (for worker)."""
+        bucket = bucket or self.bucket
+        s3 = self._get_sync_client()
+        try:
+            s3.put_object(Bucket=bucket, Key=key, Body=data)
+            logger.info(f"Uploaded (sync) {len(data)} bytes to: s3://{bucket}/{key}")
+            return key
+        except ClientError as e:
+            logger.exception(f"Failed to upload to {key}")
+            raise RuntimeError(f"Failed to upload: {e}") from e
+
+    def file_exists_sync(self, key: str, bucket: str = None) -> bool:
+        """Check if file exists synchronously (for idempotence)."""
+        bucket = bucket or self.bucket
+        s3 = self._get_sync_client()
+        try:
+            s3.head_object(Bucket=bucket, Key=key)
+            return True
+        except ClientError:
+            return False
 
 
 # Singleton instance

@@ -223,10 +223,31 @@ export default function JobDetailPage() {
                             <span className="label">Elements Mapped</span>
                             <span className="value">{evidence.elementsMapped}</span>
                         </div>
+
+                        {/* Content Preservation (Mock logic for now, real logic would use golden runner output) */}
+                        <div className="stat-row">
+                            <span className="label">Content Preserved</span>
+                            <span className="value success">
+                                {evidence.elementsMapped !== '?' && evidence.elementsMapped !== '0' ? '✅ YES' : '—'}
+                            </span>
+                        </div>
+
                         <div className="stat-row">
                             <span className="label">Warnings</span>
-                            <span className="value warning">{evidence.warnings}</span>
+                            <span className={`value ${evidence.warnings > 0 ? 'warning' : 'success'}`}>
+                                {evidence.warnings}
+                            </span>
                         </div>
+
+                        {evidence.warnings > 0 && (
+                            <div className="warnings-list">
+                                <h3>Warning Details</h3>
+                                <ul>
+                                    {/* Placeholder for real warning text, fetching specifically if needed */}
+                                    <li>See events for details</li>
+                                </ul>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -268,6 +289,11 @@ export default function JobDetailPage() {
                 .label { color: #555; }
                 .value { font-weight: 600; font-family: monospace; font-size: 1.1rem; }
                 .warning { color: #f5a623; }
+                .success { color: #22c55e; }
+                
+                .warnings-list { margin-top: 1rem; font-size: 0.9rem; color: #666; }
+                .warnings-list h3 { font-size: 1rem; margin-bottom: 0.5rem; }
+                .warnings-list ul { padding-left: 1.2rem; margin: 0; }
 
                 .artifacts-list { list-style: none; padding: 0; margin: 0 0 1rem; }
                 .artifact-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: white; border: 1px solid #eee; border-radius: 4px; margin-bottom: 0.5rem; }

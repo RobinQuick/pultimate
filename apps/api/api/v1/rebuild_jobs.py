@@ -18,6 +18,8 @@ from models.sql_models import (
     TemplateVersion,
     User,
 )
+from pathlib import Path
+import shutil
 from schemas.rebuild_schemas import (
     ArtifactWithUrl,
     JobArtifactsResponse,
@@ -223,3 +225,125 @@ async def get_job_events(
         select(JobEvent).where(JobEvent.job_id == job_id).order_by(JobEvent.created_at.desc())
     )
     return events_result.scalars().all()
+
+
+@router.post("/demo", response_model=RebuildJobResponse)
+async def create_demo_job(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Start a 'One-Click' demo job using the Golden Set case 001.
+    If 'Demo Deck' or 'Demo Template' don't exist for user, they are created.
+    """
+    # Define demo asset paths
+    BASE_DIR = Path(__file__).resolve().parents[3]  # apps/api
+    CASE_DIR = BASE_DIR / "golden_set" / "cases" / "case_001"
+    
+    DEMO_DECK_NAME = "Demo Deck (Golden Sample)"
+    DEMO_TEMPLATE_NAME = "Demo Template (Golden Sample)"
+
+    if not CASE_DIR.exists():
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Demo assets missing on server: {CASE_DIR}"
+        )
+
+    # 1. Ensure Demo Deck
+    deck_result = await db.execute(
+        select(Deck).where(Deck.user_id == current_user.id, Deck.name == DEMO_DECK_NAME)
+    )
+    deck = deck_result.scalars().first()
+
+    if not deck:
+        # Create deck
+        deck = Deck(
+            name=DEMO_DECK_NAME,
+            workspace_id=current_user.active_workspace_id or "default", # Fallback if needed
+            owner_id=current_user.id,
+        )
+        # Handle workspace if null (shouldn't be ifauth is correct but safe)
+        if not deck.workspace_id:
+             # Find a workspace
+             from models.sql_models import Workspace
+             ws = (await db.execute(select(Workspace).where(Workspace.owner_id == current_user.id))).scalars().first()
+             if ws:
+                 deck.workspace_id = ws.id
+             else:
+                 # Should fail or create default? 
+                 # For demo let's assume valid user state or fail hard
+                 pass 
+
+        db.add(deck)
+        await db.commit()
+        await db.refresh(deck)
+
+        # Upload file
+        input_file = CASE_DIR / "input.pptx"
+        s3_key = await storage.upload_bytes(input_file.read_bytes(), f"decks/{deck.id}.pptx")
+        
+        # Create DeckFile record
+        deck_file = DeckFile(
+            deck_id=deck.id,
+            type="SOURCE",
+            filename="demo_input.pptx",
+            s3_key=s3_key,
+            size_bytes=input_file.stat().st_size
+        )
+        db.add(deck_file)
+        await db.commit()
+        logger.info(f"Created demo deck: {deck.id}")
+
+    # 2. Ensure Demo Template
+    tpl_result = await db.execute(
+        select(Template).where(Template.user_id == current_user.id, Template.name == DEMO_TEMPLATE_NAME)
+    )
+    template = tpl_result.scalars().first()
+
+    if not template:
+        template = Template(
+            name=DEMO_TEMPLATE_NAME,
+            workspace_id=deck.workspace_id,
+            user_id=current_user.id,
+        )
+        db.add(template)
+        await db.commit()
+        await db.refresh(template)
+
+        # Upload files
+        potx_file = CASE_DIR / "template.pptx" # Uses pptx as potx source for demo
+        if not potx_file.exists():
+             potx_file = CASE_DIR / "template.potx"
+        
+        s3_key = await storage.upload_bytes(potx_file.read_bytes(), f"templates/{template.id}/v1.potx")
+
+        # Create Version
+        version = TemplateVersion(
+            template_id=template.id,
+            version_num=1,
+            s3_key_potx=s3_key,
+            filename=potx_file.name,
+            status="PUBLISHED",
+        )
+        db.add(version)
+        await db.commit()
+        logger.info(f"Created demo template: {template.id}")
+
+    # 3. Create Job
+    job = RebuildJob(
+        workspace_id=deck.workspace_id,
+        user_id=current_user.id,
+        deck_id=deck.id,
+        template_id=template.id,
+        status="QUEUED",
+        progress=0,
+        options={"demo_mode": True},
+    )
+    db.add(job)
+    await db.commit()
+    await db.refresh(job)
+
+    # Enqueue
+    rebuild_deck_task.delay(job.id)
+    
+    return job

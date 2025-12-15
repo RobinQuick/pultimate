@@ -10,7 +10,6 @@ Usage:
     GOLDEN_USE_REAL_LLM=true python -m runner      # Real LLM
 """
 
-import asyncio
 import hashlib
 import json
 import logging
@@ -149,7 +148,7 @@ def check_no_gen_policy(mapping_json: dict) -> tuple[bool, list[str]]:
     return len(violations) == 0, violations
 
 
-async def run_case(case_dir: Path, use_real_llm: bool = False) -> CaseResult:
+def run_case(case_dir: Path, use_real_llm: bool = False) -> CaseResult:
     """Run a single golden set test case."""
     case_name = case_dir.name
     result = CaseResult(case_name=case_name)
@@ -195,7 +194,7 @@ async def run_case(case_dir: Path, use_real_llm: bool = False) -> CaseResult:
             model="gpt-4o-mini" if use_real_llm else "mock",
         )
 
-        mapping = await call_llm_for_mapping(elements.elements, placeholders.placeholders, config)
+        mapping = call_llm_for_mapping(elements.elements, placeholders.placeholders, config)
 
         # Check NO-GEN policy on mapping
         mapping_dict = mapping.model_dump()
@@ -257,7 +256,7 @@ async def run_case(case_dir: Path, use_real_llm: bool = False) -> CaseResult:
     return result
 
 
-async def run_golden_set(use_real_llm: bool = False) -> GoldenSetReport:
+def run_golden_set(use_real_llm: bool = False) -> GoldenSetReport:
     """Run all golden set test cases."""
     report = GoldenSetReport(use_real_llm=use_real_llm)
 
@@ -273,7 +272,7 @@ async def run_golden_set(use_real_llm: bool = False) -> GoldenSetReport:
 
     for case_dir in cases:
         logger.info(f"Running case: {case_dir.name}")
-        result = await run_case(case_dir, use_real_llm)
+        result = run_case(case_dir, use_real_llm)
         report.results.append(result)
 
         if result.passed:
@@ -289,7 +288,7 @@ def main():
     """CLI entry point."""
     use_real_llm = os.environ.get("GOLDEN_USE_REAL_LLM", "").lower() in ("true", "1", "yes")
 
-    report = asyncio.run(run_golden_set(use_real_llm))
+    report = run_golden_set(use_real_llm)
 
     # Print summary
     print("\n" + "=" * 60)

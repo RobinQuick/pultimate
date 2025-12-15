@@ -210,6 +210,12 @@ export const api = {
         async getEvents(id: string): Promise<JobEvent[]> {
             return fetchClient<JobEvent[]>(`/api/v1/rebuild-jobs/${id}/events`);
         },
+
+        async createDemoJob(): Promise<RebuildJob> {
+            return fetchClient<RebuildJob>('/api/v1/rebuild-jobs/demo', {
+                method: 'POST',
+            });
+        },
     },
 
     // =========================================================================

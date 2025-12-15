@@ -95,6 +95,17 @@ except Exception as e:
     rebuild_jobs = None
     FULL_MODE = False
 
+try:
+    from api.v1 import system
+
+    print("✓ api.v1.system imported")
+except Exception as e:
+    IMPORT_ERRORS.append(f"api.v1.system: {e}")
+    print(f"✗ api.v1.system failed: {e}")
+    traceback.print_exc()
+    system = None
+    FULL_MODE = False
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -130,6 +141,8 @@ if templates:
     app.include_router(templates.router, prefix="/api/v1")
 if rebuild_jobs:
     app.include_router(rebuild_jobs.router, prefix="/api/v1")
+if system:
+    app.include_router(system.router, prefix="/api/v1")
 
 
 @app.get("/health")

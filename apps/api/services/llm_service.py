@@ -127,14 +127,14 @@ Output the mapping JSON:"""
 # =============================================================================
 
 
-async def _call_openai(prompt: str, system_prompt: str, config: LLMConfig) -> str:
+def _call_openai(prompt: str, system_prompt: str, config: LLMConfig) -> str:
     """Call OpenAI API."""
     try:
         import openai
 
-        client = openai.AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
 
-        response = await client.chat.completions.create(
+        response = client.chat.completions.create(
             model=config.model,
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -152,7 +152,7 @@ async def _call_openai(prompt: str, system_prompt: str, config: LLMConfig) -> st
         raise LLMProviderError(f"OpenAI API failed: {e}") from e
 
 
-async def _call_mock(prompt: str, system_prompt: str, config: LLMConfig) -> str:
+def _call_mock(prompt: str, system_prompt: str, config: LLMConfig) -> str:
     """Mock LLM for testing - returns minimal valid mapping."""
     logger.info("Using mock LLM provider")
 
@@ -178,7 +178,7 @@ async def _call_mock(prompt: str, system_prompt: str, config: LLMConfig) -> str:
 # =============================================================================
 
 
-async def call_llm_for_mapping(
+def call_llm_for_mapping(
     elements: list[DeckElement],
     placeholders: list[TemplatePlaceholder],
     config: LLMConfig | None = None,
@@ -219,11 +219,11 @@ async def call_llm_for_mapping(
 
     # Call provider
     if config.provider == "mock":
-        raw_output = await _call_mock(user_prompt, system_prompt, config)
+        raw_output = _call_mock(user_prompt, system_prompt, config)
     elif config.provider == "openai":
         if not settings.OPENAI_API_KEY:
             raise LLMProviderError("OPENAI_API_KEY not configured")
-        raw_output = await _call_openai(user_prompt, system_prompt, config)
+        raw_output = _call_openai(user_prompt, system_prompt, config)
     else:
         raise LLMProviderError(f"Unknown provider: {config.provider}")
 

@@ -34,10 +34,11 @@ The following environment variables must be set in production (e.g., Fly.io secr
 | `REDIS_URL` | API, Worker | Redis connection string for Celery broker/backend |
 | `SECRET_KEY` | API | Secret key for JWT signing |
 | `OPENAI_API_KEY` | Worker | Required if `LLM_PROVIDER=openai` |
-| `R2_ACCOUNT_ID` | API, Worker | Cloudflare R2 Account ID |
-| `R2_ACCESS_KEY_ID` | API, Worker | R2 Access Key |
-| `R2_SECRET_ACCESS_KEY` | API, Worker | R2 Secret Key |
-| `R2_BUCKET_NAME` | API, Worker | R2 Bucket Name |
+| `S3_ENDPOINT_URL` | API, Worker | S3-compatible endpoint (e.g., Cloudflare R2 URL) |
+| `S3_ACCESS_KEY_ID` | API, Worker | S3 Access Key |
+| `S3_SECRET_ACCESS_KEY` | API, Worker | S3 Secret Key |
+| `S3_BUCKET` | API, Worker | S3 Bucket Name |
+| `S3_REGION` | API, Worker | S3 Region (e.g., auto or us-east-1) |
 | `API_BASE` | Web | URL of the backend API (e.g., `https://api.pultimate.com`) |
 
 ### Deployment Commands
