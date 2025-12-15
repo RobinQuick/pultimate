@@ -21,6 +21,7 @@ from models.sql_models import (
 from schemas.rebuild_schemas import (
     ArtifactWithUrl,
     JobArtifactsResponse,
+    JobEventResponse,
     RebuildJobCreate,
     RebuildJobDetail,
     RebuildJobList,
@@ -199,3 +200,26 @@ async def get_job_artifacts(
             logger.error(f"Failed to generate presigned URL for artifact {artifact.id}: {e}")
 
     return JobArtifactsResponse(job_id=job_id, artifacts=artifacts_with_urls)
+
+
+@router.get("/{job_id}/events", response_model=list[JobEventResponse])
+async def get_job_events(
+    job_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Get timeline events for a job."""
+    from models.sql_models import JobEvent
+
+    # Verify job ownership
+    job_result = await db.execute(
+        select(RebuildJob).where(RebuildJob.id == job_id, RebuildJob.user_id == current_user.id)
+    )
+    if not job_result.scalars().first():
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    # Fetch events ordered by time
+    events_result = await db.execute(
+        select(JobEvent).where(JobEvent.job_id == job_id).order_by(JobEvent.created_at.desc())
+    )
+    return events_result.scalars().all()

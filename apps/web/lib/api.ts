@@ -206,6 +206,10 @@ export const api = {
         async getArtifacts(id: string): Promise<{ job_id: string; artifacts: JobArtifact[] }> {
             return fetchClient<{ job_id: string; artifacts: JobArtifact[] }>(`/api/v1/rebuild-jobs/${id}/artifacts`);
         },
+
+        async getEvents(id: string): Promise<JobEvent[]> {
+            return fetchClient<JobEvent[]>(`/api/v1/rebuild-jobs/${id}/events`);
+        },
     },
 
     // =========================================================================

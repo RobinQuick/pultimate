@@ -3,7 +3,9 @@
 NO-GEN POLICY: This worker copies content, never generates.
 """
 
+import asyncio
 import logging
+import os
 import shutil
 import tempfile
 from datetime import datetime
@@ -12,6 +14,15 @@ from pathlib import Path
 from celery import Celery
 
 from core.config import settings
+from models.sql_models import DeckFile, RebuildJob, TemplateVersion
+from services.job_events import emit_event
+from services.llm_service import LLMValidationError, call_llm_for_mapping
+from services.rebuild_service import (
+    apply_mapping,
+    parse_deck_elements,
+    parse_template_placeholders,
+)
+from services.storage import storage
 
 logger = logging.getLogger(__name__)
 
@@ -47,16 +58,9 @@ def _get_sync_session():
     return Session()
 
 
-def _add_event(session, job_id: str, event_type: str, message: str, data: dict | None = None):
-    """Add a job event."""
-    from models.sql_models import JobEvent
-
-    event = JobEvent(job_id=job_id, event_type=event_type, message=message, data=data)
-    session.add(event)
-    session.commit()
-
-
-def _add_artifact(session, job_id: str, artifact_type: str, s3_key: str, filename: str, size_bytes: int | None = None):
+def _add_artifact(
+    session, job_id: str, artifact_type: str, s3_key: str, filename: str, size_bytes: int | None = None
+):
     """Add a job artifact."""
     from models.sql_models import JobArtifact
 
@@ -89,10 +93,6 @@ def rebuild_deck_task(self, job_id: str):
     6. Save output to R2
     7. Update job status + create artifacts
     """
-    import asyncio
-
-    from models.sql_models import DeckFile, RebuildJob, TemplateVersion
-
     logger.info(f"[Job {job_id}] Starting rebuild task")
 
     session = _get_sync_session()
@@ -107,19 +107,30 @@ def rebuild_deck_task(self, job_id: str):
             logger.error(f"[Job {job_id}] Job not found")
             return {"status": "FAILED", "error": "Job not found"}
 
+        # PROD CHECK: Ensure secrets exist
+        if settings.LLM_PROVIDER == "openai" and not os.environ.get("OPENAI_API_KEY"):
+            error_msg = "OPENAI_API_KEY missing in environment"
+            emit_event(session, job_id, "FAILED", error_msg)
+            job.status = "FAILED"
+            job.error_message = error_msg
+            session.commit()
+            return {"status": "FAILED", "error": error_msg}
+
         # Update status to RUNNING
         job.status = "RUNNING"
         job.started_at = datetime.utcnow()
         job.progress = 5
         session.commit()
-        _add_event(session, job_id, "STARTED", "Rebuild job started")
+        emit_event(session, job_id, "STARTED", "Rebuild job started")
 
         # Check for dry_run mode
         dry_run = job.options.get("dry_run", False) if job.options else False
         logger.info(f"[Job {job_id}] Mode: {'DRY_RUN' if dry_run else 'FULL'}")
 
         # Get deck source file
-        deck_file = session.query(DeckFile).filter(DeckFile.deck_id == job.deck_id, DeckFile.type == "SOURCE").first()
+        deck_file = (
+            session.query(DeckFile).filter(DeckFile.deck_id == job.deck_id, DeckFile.type == "SOURCE").first()
+        )
         if not deck_file:
             raise ValueError("Deck has no source file")
 
@@ -142,15 +153,13 @@ def rebuild_deck_task(self, job_id: str):
         # =====================================================================
         # STEP 2: Download inputs from R2
         # =====================================================================
-        _add_event(session, job_id, "PROGRESS", "Downloading inputs from R2")
+        emit_event(session, job_id, "PROGRESS", "Downloading inputs from R2")
 
         work_dir = Path(tempfile.mkdtemp(prefix=f"rebuild_{job_id}_"))
         deck_path = work_dir / "input.pptx"
         template_path = work_dir / "template.pptx"
 
         # Download using sync wrapper
-        from services.storage import storage
-
         async def download_files():
             await storage.download_file(deck_file.s3_key, str(deck_path))
             await storage.download_file(template_version.s3_key_potx, str(template_path))
@@ -162,41 +171,41 @@ def rebuild_deck_task(self, job_id: str):
 
         job.progress = 25
         session.commit()
-        _add_event(session, job_id, "STEP_COMPLETED", "Downloaded inputs from R2")
+        emit_event(session, job_id, "DOWNLOADED", "Downloaded inputs from R2")
 
         # =====================================================================
         # STEP 3: Parse deck elements
         # =====================================================================
-        from services.rebuild_service import parse_deck_elements, parse_template_placeholders
-
-        _add_event(session, job_id, "PROGRESS", "Parsing deck elements")
+        emit_event(session, job_id, "PROGRESS", "Parsing deck elements")
 
         elements_result = parse_deck_elements(deck_path)
         logger.info(f"[Job {job_id}] Parsed {len(elements_result.elements)} elements")
 
         job.progress = 35
         session.commit()
+        emit_event(session, job_id, "PARSED_DECK", f"Parsed {len(elements_result.elements)} elements")
 
         # =====================================================================
         # STEP 4: Parse template placeholders
         # =====================================================================
-        _add_event(session, job_id, "PROGRESS", "Parsing template placeholders")
+        emit_event(session, job_id, "PROGRESS", "Parsing template placeholders")
 
         placeholders_result = parse_template_placeholders(template_path)
         logger.info(f"[Job {job_id}] Parsed {len(placeholders_result.placeholders)} placeholders")
 
         job.progress = 45
         session.commit()
+        emit_event(session, job_id, "PARSED_TEMPLATE", f"Parsed {len(placeholders_result.placeholders)} placeholders")
 
         # =====================================================================
         # STEP 5: Call LLM for mapping (NO-GEN - JSON only)
         # =====================================================================
-        from services.llm_service import LLMValidationError, call_llm_for_mapping
-
-        _add_event(session, job_id, "PROGRESS", "Generating element mapping via LLM")
+        emit_event(session, job_id, "PROGRESS", "Generating element mapping via LLM")
 
         try:
-            mapping = asyncio.run(call_llm_for_mapping(elements_result.elements, placeholders_result.placeholders))
+            mapping = asyncio.run(
+                call_llm_for_mapping(elements_result.elements, placeholders_result.placeholders)
+            )
             logger.info(f"[Job {job_id}] LLM mapping complete: {len(mapping.slide_mappings)} slides")
 
         except LLMValidationError as e:
@@ -218,10 +227,10 @@ def rebuild_deck_task(self, job_id: str):
 
         job.progress = 60
         session.commit()
-        _add_event(
+        emit_event(
             session,
             job_id,
-            "STEP_COMPLETED",
+            "LLM_MAPPING",
             f"LLM mapping complete: {len(mapping.slide_mappings)} output slides",
             {"skipped": len(mapping.skipped_elements), "warnings": len(mapping.warnings)},
         )
@@ -247,14 +256,12 @@ def rebuild_deck_task(self, job_id: str):
             job.progress = 100
             job.completed_at = datetime.utcnow()
             session.commit()
-            _add_event(session, job_id, "COMPLETED", "Dry run complete - mapping only")
+            emit_event(session, job_id, "COMPLETED", "Dry run complete - mapping only")
             logger.info(f"[Job {job_id}] Dry run complete")
             return {"status": "SUCCEEDED", "mode": "dry_run", "job_id": job_id}
 
         # Apply mapping (NO-GEN - content copy only)
-        from services.rebuild_service import apply_mapping
-
-        _add_event(session, job_id, "PROGRESS", "Applying mapping to rebuild deck")
+        emit_event(session, job_id, "PROGRESS", "Applying mapping to rebuild deck")
 
         output_dir = work_dir / "output"
         output_dir.mkdir()
@@ -269,10 +276,10 @@ def rebuild_deck_task(self, job_id: str):
 
         job.progress = 85
         session.commit()
-        _add_event(
+        emit_event(
             session,
             job_id,
-            "STEP_COMPLETED",
+            "MAPPING_APPLIED",
             f"Deck rebuilt: {result.slides_created} slides, {result.elements_mapped} elements",
             {"warnings": result.warnings},
         )
@@ -280,7 +287,7 @@ def rebuild_deck_task(self, job_id: str):
         # =====================================================================
         # STEP 7: Upload output to R2
         # =====================================================================
-        _add_event(session, job_id, "PROGRESS", "Uploading output to R2")
+        emit_event(session, job_id, "PROGRESS", "Uploading output to R2")
 
         output_s3_key = f"jobs/{job_id}/output.pptx"
         output_size = result.output_path.stat().st_size
@@ -292,6 +299,7 @@ def rebuild_deck_task(self, job_id: str):
         asyncio.run(upload_output())
 
         _add_artifact(session, job_id, "OUTPUT_DECK", output_s3_key, "output.pptx", output_size)
+        emit_event(session, job_id, "UPLOADED", "Output deck uploaded to R2")
 
         # =====================================================================
         # COMPLETE
@@ -300,7 +308,7 @@ def rebuild_deck_task(self, job_id: str):
         job.progress = 100
         job.completed_at = datetime.utcnow()
         session.commit()
-        _add_event(session, job_id, "COMPLETED", "Rebuild completed successfully")
+        emit_event(session, job_id, "COMPLETED", "Rebuild completed successfully")
 
         logger.info(f"[Job {job_id}] Completed successfully")
         return {
@@ -321,7 +329,7 @@ def rebuild_deck_task(self, job_id: str):
                 job.error_message = str(e)[:500]
                 job.completed_at = datetime.utcnow()
                 session.commit()
-                _add_event(session, job_id, "FAILED", str(e)[:500])
+                emit_event(session, job_id, "FAILED", str(e)[:500])
         except Exception:
             logger.exception("Failed to update job status")
 
@@ -347,3 +355,4 @@ def process_deck(deck_id: str, file_key: str, template_id: str | None = None):
     """Legacy task - use rebuild_deck_task instead."""
     logger.warning("process_deck is deprecated, use rebuild_deck_task")
     return {"status": "DEPRECATED", "message": "Use rebuild_deck_task"}
+
