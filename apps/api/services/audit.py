@@ -5,6 +5,7 @@ from schemas.slide_spec import DeckSpec
 from schemas.template_spec import TemplateSpec
 
 # Import definitions to trigger registration
+import services.rules.definitions.basics  # noqa: F401
 
 
 class DeckLintEngine:

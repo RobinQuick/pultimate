@@ -12,7 +12,7 @@ def create_bad_pptx(path):
 
     p = title.text_frame.paragraphs[0]
     p.font.name = "Comic Sans MS"  # Bad
-    p.font.color.rgb = None  # Default
+    # Leave font color as default (don't try to set rgb=None which raises ValueError)
 
     # Save shape ID
     sid = title.shape_id

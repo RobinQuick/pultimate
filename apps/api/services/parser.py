@@ -98,8 +98,8 @@ class DeckParser:
                     font_size=emu_to_px(run.font.size)
                     if run and run.font.size
                     else 0,  # Actually font size in pptx is confusing (Pt vs Emu). python-pptx creates Pt object.
-                    is_bold=run.font.bold if run else False,
-                    is_italic=run.font.italic if run else False,
+                    is_bold=bool(run.font.bold) if run and run.font.bold is not None else False,
+                    is_italic=bool(run.font.italic) if run and run.font.italic is not None else False,
                 )
 
                 # Fix font size conversion if it's Pt
