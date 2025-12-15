@@ -54,6 +54,17 @@ class Settings(BaseSettings):
     # Features
     RENDERING_ENABLED: bool = True
 
+    # LLM Configuration
+    LLM_PROVIDER: str = Field(default="openai", description="LLM provider: openai, anthropic, mock")
+    LLM_MODEL: str = Field(default="gpt-4o-mini", description="LLM model name")
+    LLM_TIMEOUT: int = Field(default=60, description="LLM request timeout in seconds")
+    OPENAI_API_KEY: str = Field(default="", description="OpenAI API key")
+
+    @property
+    def DATABASE_URL(self) -> str:
+        """Alias for SQLALCHEMY_DATABASE_URI for worker sync usage."""
+        return self.SQLALCHEMY_DATABASE_URI
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # Set legacy vars from new standardized vars for backwards compatibility

@@ -215,6 +215,56 @@ class StorageService:
         except ClientError:
             return False
 
+    async def download_file(self, key: str, local_path: str, bucket: str = None) -> None:
+        """Download a file from storage to local path.
+
+        Args:
+            key: S3 object key
+            local_path: Local file path to save to
+            bucket: Bucket name (uses default if not provided)
+
+        Raises:
+            HTTPException: On download failure
+        """
+        bucket = bucket or self.bucket
+
+        try:
+            async with self.session.client("s3", **self._get_client_kwargs()) as s3:
+                response = await s3.get_object(Bucket=bucket, Key=key)
+                async with response["Body"] as stream:
+                    data = await stream.read()
+                    with open(local_path, "wb") as f:
+                        f.write(data)
+                logger.info(f"Downloaded: s3://{bucket}/{key} -> {local_path}")
+        except ClientError as e:
+            logger.exception(f"Failed to download {key}")
+            raise HTTPException(status_code=500, detail=f"Failed to download file: {e}") from e
+
+    async def upload_bytes(self, data: bytes, key: str, bucket: str = None) -> str:
+        """Upload raw bytes to storage.
+
+        Args:
+            data: Bytes to upload
+            key: S3 object key
+            bucket: Bucket name (uses default if not provided)
+
+        Returns:
+            S3 key of uploaded object
+
+        Raises:
+            HTTPException: On upload failure
+        """
+        bucket = bucket or self.bucket
+
+        try:
+            async with self.session.client("s3", **self._get_client_kwargs()) as s3:
+                await s3.put_object(Bucket=bucket, Key=key, Body=data)
+                logger.info(f"Uploaded {len(data)} bytes to: s3://{bucket}/{key}")
+                return key
+        except ClientError as e:
+            logger.exception(f"Failed to upload to {key}")
+            raise HTTPException(status_code=500, detail=f"Failed to upload: {e}") from e
+
 
 # Singleton instance
 storage = StorageService()
