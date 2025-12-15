@@ -12,7 +12,7 @@ export default function JobDashboard({ params }: { params: { id: string } }) {
         // Poll for job status
         const interval = setInterval(async () => {
             try {
-                const data = await api.getJob(params.id);
+                const data = await api.getJob(params.id) as any;
                 setJob(data);
                 if (data.status === "COMPLETED" || data.status === "FAILED") {
                     clearInterval(interval);
@@ -74,8 +74,8 @@ export default function JobDashboard({ params }: { params: { id: string } }) {
                             key={tab}
                             onClick={() => setActiveTab(tab as any)}
                             className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === tab
-                                    ? "bg-slate-700 text-white shadow-sm"
-                                    : "text-slate-400 hover:text-slate-200"
+                                ? "bg-slate-700 text-white shadow-sm"
+                                : "text-slate-400 hover:text-slate-200"
                                 }`}
                         >
                             {tab.charAt(0).toUpperCase() + tab.slice(1)}

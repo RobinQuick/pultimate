@@ -43,3 +43,39 @@ export async function fetchClient<T>(endpoint: string, options: FetchOptions = {
 
     return response.json();
 }
+
+// API helper object for common operations
+export const api = {
+    async createJob(original: File, template: File) {
+        const formData = new FormData();
+        formData.append('original', original);
+        formData.append('template', template);
+
+        const response = await fetch(`${API_URL}/api/v1/jobs/`, {
+            method: 'POST',
+            body: formData,
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: 'Failed to create job' }));
+            throw new Error(error.detail);
+        }
+        return response.json();
+    },
+
+    async runJob(jobId: string) {
+        const response = await fetch(`${API_URL}/api/v1/jobs/${jobId}/run`, {
+            method: 'POST',
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: 'Failed to run job' }));
+            throw new Error(error.detail);
+        }
+        return response.json();
+    },
+
+    async getJob(jobId: string) {
+        return fetchClient(`/api/v1/jobs/${jobId}`);
+    }
+};

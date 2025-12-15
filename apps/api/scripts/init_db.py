@@ -35,11 +35,10 @@ def mask_database_url(url: str) -> str:
 async def main() -> None:
     """Initialize database schema."""
     # Import after path setup
-    from core.config import settings
-    from database import Base, engine
-    
     # Force import all models to register them with Base.metadata
     import models.sql_models  # noqa: F401
+    from core.config import settings
+    from database import Base, engine
     
     print(f"Database URL: {mask_database_url(str(settings.SQLALCHEMY_DATABASE_URI))}")
     print(f"Tables to create: {list(Base.metadata.tables.keys())}")

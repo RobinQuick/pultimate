@@ -6,7 +6,7 @@ def create_synthetic_template(path):
     prs = Presentation()
     # Add a master/layout structure (default empty prs has one)
     # Add placeholders to first layout
-    layout = prs.slide_masters[0].slide_layouts[0]
+    _layout = prs.slide_masters[0].slide_layouts[0]  # noqa: F841
     # layout has a title placeholder by default usually
     prs.save(path)
 

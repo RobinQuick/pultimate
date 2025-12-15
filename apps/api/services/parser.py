@@ -1,5 +1,4 @@
 import logging
-from typing import Optional
 
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE_TYPE
@@ -11,7 +10,8 @@ logger = logging.getLogger(__name__)
 EMU_PER_PX = 9525 # Approx 96 DPI
 
 def emu_to_px(emu_val) -> float:
-    if emu_val is None: return 0.0
+    if emu_val is None:
+        return 0.0
     return round(float(emu_val) / EMU_PER_PX, 2)
 
 class DeckParser:
@@ -61,7 +61,7 @@ class DeckParser:
             suspect_issues=suspects
         )
 
-    def _parse_shape(self, shape, z_order: int) -> Optional[ElementSpec]:
+    def _parse_shape(self, shape, z_order: int) -> ElementSpec | None:
         # Handle Groups (Recursion could be added here, currently flattened or skipped)
         if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
             # For V1 simplicity, treating group as bounding box container

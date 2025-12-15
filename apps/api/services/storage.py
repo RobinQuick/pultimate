@@ -8,7 +8,6 @@ Supports any S3-compatible service:
 """
 import logging
 import uuid
-from typing import BinaryIO
 
 import aioboto3
 from botocore.config import Config
@@ -218,7 +217,7 @@ class StorageService:
                 await s3.delete_object(Bucket=bucket, Key=key)
                 logger.info(f"Deleted: s3://{bucket}/{key}")
                 return True
-        except ClientError as e:
+        except ClientError:
             logger.exception(f"Failed to delete {key}")
             return False
     

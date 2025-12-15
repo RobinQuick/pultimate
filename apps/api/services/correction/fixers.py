@@ -2,9 +2,9 @@ from pptx.dml.color import RGBColor
 from pptx.slide import Slide
 
 from schemas.template_spec import TemplateSpec
-from services.rules.base import FindingSpec
 from services.correction.base import BaseFixer, FixResult
 from services.correction.engine import FixerRegistry
+from services.rules.base import FindingSpec
 
 
 def find_shape_by_id(slide: Slide, shape_id: str):

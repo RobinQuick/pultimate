@@ -1,11 +1,10 @@
 import logging
-from typing import Optional
 
 from pptx import Presentation
 
 from schemas.template_spec import TemplateSpec
-from services.rules.base import FindingSpec
 from services.correction.base import BaseFixer, FixResult
+from services.rules.base import FindingSpec
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +17,7 @@ class FixerRegistry:
         return fixer_cls
 
     @classmethod
-    def get_fixer(cls, rule_id: str) -> Optional[BaseFixer]:
+    def get_fixer(cls, rule_id: str) -> BaseFixer | None:
         fixer_cls = cls._fixers.get(rule_id)
         if fixer_cls:
             return fixer_cls()

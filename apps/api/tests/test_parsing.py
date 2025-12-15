@@ -43,7 +43,7 @@ def test_deck_parsing(tmp_path):
     assert title_elem
     assert title_elem.text_style.font_family == "Arial"
     assert title_elem.text_style.font_size == 24.0
-    assert title_elem.text_style.is_bold == True
+    assert title_elem.text_style.is_bold is True
     
     # Check Stats
     assert "Arial" in slide.stats.used_fonts

@@ -84,7 +84,7 @@ async def convert_pdf_to_png(pdf_path: str, output_dir: str, page_num: int = 1) 
         # simpler to just read the file generated.
         # It usually generates {prefix}-1.png if single page requested?
         # Let's find the file
-        expected_name = f"{img_prefix}-{page_num}.png" # Default format often
+        _expected_name = f"{img_prefix}-{page_num}.png"  # noqa: F841
         # Validating actual filename requires listing dir or knowing pdftoppm version quirks.
         # Robust way: list dir matching prefix
         

@@ -86,7 +86,7 @@ async def create_template(
     
     except IntegrityError as e:
         await db.rollback()
-        logger.exception(f"Database integrity error on template creation")
+        logger.exception("Database integrity error on template creation")
         raise HTTPException(
             status_code=400,
             detail="Database constraint violation. Ensure workspace exists."
