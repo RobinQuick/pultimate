@@ -1,4 +1,3 @@
-
 from celery import Celery
 
 from core.config import settings
@@ -7,6 +6,7 @@ from core.config import settings
 # from services.storage import storage
 
 celery_app = Celery("worker", broker=settings.REDIS_URL, backend=settings.REDIS_URL)
+
 
 @celery_app.task
 def process_deck(deck_id: str, file_key: str, template_id: str | None = None):
@@ -20,13 +20,13 @@ def process_deck(deck_id: str, file_key: str, template_id: str | None = None):
     6. Save Results
     """
     # ... In logic usage ...
-    
+
     # STUB LOGIC for demonstration of Feature Flag Usage
-    
+
     # 1. Download (Stub)
     # local_path = f"/tmp/{deck_id}.pptx"
     # await storage.download(file_key, local_path)
-    
+
     # 2. Render [Conditional]
     rendering_results = None
     if settings.RENDERING_ENABLED:

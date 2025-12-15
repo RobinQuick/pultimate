@@ -10,17 +10,18 @@ def create_synthetic_template(path):
     # layout has a title placeholder by default usually
     prs.save(path)
 
+
 def test_ingestion(tmp_path):
     pptx_path = tmp_path / "template.pptx"
     create_synthetic_template(pptx_path)
-    
+
     spec = ingestor.ingest(str(pptx_path))
-    
+
     assert spec.name == "Ingested Template"
     assert len(spec.masters) >= 1
     assert len(spec.masters[0].layouts) >= 1
-    
+
     # Check JSON serialization
-    json_output = spec.model_dump(mode='json')
+    json_output = spec.model_dump(mode="json")
     assert "theme_colors" in json_output
     assert "masters" in json_output

@@ -11,7 +11,7 @@ from sqlalchemy.exc import OperationalError
 from core.config import settings
 
 # Handle case where DATABASE_URL is not set (skip migrations)
-DATABASE_URL = getattr(settings, 'SQLALCHEMY_DATABASE_URI', None) or os.getenv("DATABASE_URL", "")
+DATABASE_URL = getattr(settings, "SQLALCHEMY_DATABASE_URI", None) or os.getenv("DATABASE_URL", "")
 
 
 # --- JSON Logging Setup ---
@@ -27,6 +27,7 @@ class JsonFormatter(logging.Formatter):
             log_obj["exception"] = self.formatException(record.exc_info)
         return json.dumps(log_obj)
 
+
 logger = logging.getLogger("prestart")
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler(sys.stdout)
@@ -35,21 +36,23 @@ logger.addHandler(handler)
 
 # --- Config ---
 # Stable key for Advisory Lock (Arbitrary large int)
-MIGRATION_LOCK_ID = 4242424242 
+MIGRATION_LOCK_ID = 4242424242
 MAX_RETRIES = 30
 SLEEP_INTERVAL = 2
+
 
 def init_db_connection():
     """Create a sync engine for pre-start checks"""
     if not DATABASE_URL:
         logger.info("DATABASE_URL not set, skipping DB checks")
         return None
-    
+
     url = DATABASE_URL
     if "asyncpg" in url:
         url = url.replace("+asyncpg", "")
-    
+
     return create_engine(url)
+
 
 def wait_for_db(engine):
     """Wait until DB is ready accepting connections"""
@@ -61,15 +64,16 @@ def wait_for_db(engine):
             logger.info("Database connection established.")
             return True
         except OperationalError as e:
-            logger.warning(f"Database not ready yet (Attempt {i+1}/{MAX_RETRIES}): {e}")
+            logger.warning(f"Database not ready yet (Attempt {i + 1}/{MAX_RETRIES}): {e}")
             time.sleep(SLEEP_INTERVAL)
-    
+
     logger.error("Could not connect to database after max retries.")
     return False
 
+
 def acquire_advisory_lock(conn):
     """
-    Try to acquire transaction-level advisory lock. 
+    Try to acquire transaction-level advisory lock.
     Blocks until available (or we could use try_lock).
     Blocking is better here: we WANT to wait if another replica is migrating.
     """
@@ -80,6 +84,7 @@ def acquire_advisory_lock(conn):
     except Exception as e:
         logger.error(f"Failed to acquire lock: {e}")
         raise
+
 
 def run_migrations():
     """Run Alembic upgrades"""
@@ -92,9 +97,10 @@ def run_migrations():
         logger.error(f"Migration failed with exit code {e.returncode}")
         raise
 
+
 def main():
     logger.info("Starting Service Initialization (Prestart)")
-    
+
     try:
         engine = init_db_connection()
     except Exception as e:
@@ -120,6 +126,7 @@ def main():
             sys.exit(1)
 
     logger.info("Prestart complete. App is ready to launch.")
+
 
 if __name__ == "__main__":
     main()

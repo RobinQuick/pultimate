@@ -1,4 +1,3 @@
-
 from services.rules.base import BaseRule
 
 
@@ -13,5 +12,6 @@ class RuleRegistry:
     @classmethod
     def get_all_rules(cls) -> list[BaseRule]:
         return [rule_cls() for rule_cls in cls._rules]
+
 
 registry = RuleRegistry

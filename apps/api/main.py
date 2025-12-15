@@ -1,4 +1,5 @@
 """Pultimate API - FastAPI with graceful import debugging."""
+
 import sys
 import traceback
 from contextlib import asynccontextmanager
@@ -16,26 +17,32 @@ FULL_MODE = True
 
 try:
     from core.config import settings
+
     print("✓ core.config imported")
 except Exception as e:
     IMPORT_ERRORS.append(f"core.config: {e}")
     print(f"✗ core.config failed: {e}")
     traceback.print_exc()
-    settings = type('obj', (object,), {'PROJECT_NAME': 'Pultimate API'})()
+    settings = type("obj", (object,), {"PROJECT_NAME": "Pultimate API"})()
     FULL_MODE = False
 
 try:
     from database import init_db
+
     print("✓ database imported")
 except Exception as e:
     IMPORT_ERRORS.append(f"database: {e}")
     print(f"✗ database failed: {e}")
     traceback.print_exc()
-    async def init_db(): pass
+
+    async def init_db():
+        pass
+
     FULL_MODE = False
 
 try:
     from api.v1 import auth
+
     print("✓ api.v1.auth imported")
 except Exception as e:
     IMPORT_ERRORS.append(f"api.v1.auth: {e}")
@@ -46,6 +53,7 @@ except Exception as e:
 
 try:
     from api.v1 import decks
+
     print("✓ api.v1.decks imported")
 except Exception as e:
     IMPORT_ERRORS.append(f"api.v1.decks: {e}")
@@ -56,6 +64,7 @@ except Exception as e:
 
 try:
     from api.v1 import analysis
+
     print("✓ api.v1.analysis imported")
 except Exception as e:
     IMPORT_ERRORS.append(f"api.v1.analysis: {e}")
@@ -66,6 +75,7 @@ except Exception as e:
 
 try:
     from api.v1 import templates
+
     print("✓ api.v1.templates imported")
 except Exception as e:
     IMPORT_ERRORS.append(f"api.v1.templates: {e}")
@@ -85,11 +95,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(
-    title=getattr(settings, 'PROJECT_NAME', 'Pultimate API'),
-    lifespan=lifespan,
-    version="2.0.0"
-)
+app = FastAPI(title=getattr(settings, "PROJECT_NAME", "Pultimate API"), lifespan=lifespan, version="2.0.0")
 
 # CORS configuration
 origins = ["*"]
@@ -119,7 +125,7 @@ def health_check():
         "status": "ok",
         "version": "2.0.0",
         "mode": "full" if FULL_MODE else "minimal",
-        "import_errors": IMPORT_ERRORS if IMPORT_ERRORS else None
+        "import_errors": IMPORT_ERRORS if IMPORT_ERRORS else None,
     }
 
 

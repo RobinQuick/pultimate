@@ -10,6 +10,7 @@ from models.sql_models import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/token")
 
+
 async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -23,7 +24,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
             raise credentials_exception
     except JWTError as e:
         raise credentials_exception from e
-        
+
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalars().first()
     if user is None:

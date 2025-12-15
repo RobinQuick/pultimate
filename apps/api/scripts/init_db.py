@@ -9,6 +9,7 @@ Usage (Fly.io SSH):
 This script creates all SQLAlchemy tables defined in models/sql_models.py.
 Idempotent: safe to run multiple times (CREATE TABLE IF NOT EXISTS).
 """
+
 import asyncio
 import os
 import sys
@@ -39,13 +40,13 @@ async def main() -> None:
     import models.sql_models  # noqa: F401
     from core.config import settings
     from database import Base, engine
-    
+
     print(f"Database URL: {mask_database_url(str(settings.SQLALCHEMY_DATABASE_URI))}")
     print(f"Tables to create: {list(Base.metadata.tables.keys())}")
-    
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    
+
     print("✓ Database schema created successfully.")
     print(f"  Created {len(Base.metadata.tables)} tables.")
 

@@ -10,11 +10,12 @@ class FindingSpec(BaseModel):
     rule_id: str
     slide_index: int
     element_id: str | None = None
-    severity: str # LOW, MEDIUM, HIGH, CRITICAL
+    severity: str  # LOW, MEDIUM, HIGH, CRITICAL
     message: str
     expected: str | None = None
     actual: str | None = None
     suggestion: str | None = None
+
 
 class BaseRule(ABC):
     id: str = "base_rule"
