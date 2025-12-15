@@ -118,3 +118,79 @@ class Finding(Base):
     message = Column(String)
 
     analysis = relationship("Analysis", back_populates="findings")
+
+
+# =============================================================================
+# REBUILD ENGINE MODELS (V2)
+# =============================================================================
+
+
+class RebuildJob(Base):
+    """Async rebuild job that transforms a deck using a template."""
+
+    __tablename__ = "rebuild_jobs"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    workspace_id = Column(String, ForeignKey("workspaces.id"), nullable=False)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    deck_id = Column(String, ForeignKey("decks.id"), nullable=False)
+    template_id = Column(String, ForeignKey("templates.id"), nullable=False)
+
+    # Status: QUEUED -> RUNNING -> SUCCEEDED | FAILED
+    status = Column(String, default="QUEUED", index=True)
+    progress = Column(Integer, default=0)  # 0-100
+
+    # Options
+    options = Column(JSONB, nullable=True)  # dry_run, mode, etc.
+
+    # Timing
+    created_at = Column(DateTime, default=datetime.utcnow)
+    started_at = Column(DateTime, nullable=True)
+    completed_at = Column(DateTime, nullable=True)
+
+    # Error handling
+    error_message = Column(String, nullable=True)
+    error_details = Column(JSONB, nullable=True)
+
+    # Relationships
+    workspace = relationship("Workspace")
+    user = relationship("User")
+    deck = relationship("Deck")
+    template = relationship("Template")
+    events = relationship("JobEvent", back_populates="job", order_by="JobEvent.created_at")
+    artifacts = relationship("JobArtifact", back_populates="job")
+
+
+class JobEvent(Base):
+    """Event log for a rebuild job (for traceability)."""
+
+    __tablename__ = "job_events"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    job_id = Column(String, ForeignKey("rebuild_jobs.id"), nullable=False, index=True)
+
+    # Event types: STARTED, PROGRESS, STEP_COMPLETED, COMPLETED, FAILED, WARNING
+    event_type = Column(String, nullable=False)
+    message = Column(String)
+    data = Column(JSONB, nullable=True)  # Additional structured data
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    job = relationship("RebuildJob", back_populates="events")
+
+
+class JobArtifact(Base):
+    """Artifact produced by a rebuild job (input, output, logs, mapping)."""
+
+    __tablename__ = "job_artifacts"
+
+    id = Column(String, primary_key=True, default=generate_uuid)
+    job_id = Column(String, ForeignKey("rebuild_jobs.id"), nullable=False, index=True)
+
+    # Types: INPUT_DECK, INPUT_TEMPLATE, OUTPUT_DECK, MAPPING_JSON, LOG
+    artifact_type = Column(String, nullable=False)
+    s3_key = Column(String, nullable=False)
+    filename = Column(String, nullable=False)
+    size_bytes = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    job = relationship("RebuildJob", back_populates="artifacts")
