@@ -152,6 +152,31 @@ def _call_openai(prompt: str, system_prompt: str, config: LLMConfig) -> str:
         raise LLMProviderError(f"OpenAI API failed: {e}") from e
 
 
+def _call_google(prompt: str, system_prompt: str, config: LLMConfig) -> str:
+    """Call Google Gemini API."""
+    try:
+        import google.generativeai as genai
+
+        genai.configure(api_key=settings.GOOGLE_API_KEY)
+        model = genai.GenerativeModel(
+            model_name=config.model,
+            generation_config={"response_mime_type": "application/json"}
+        )
+
+        # Gemini supports system instructions in newer models but strict JSON mode 
+        # is best handled via response_mime_type and explicit prompting.
+        # We prepend system prompt to user prompt for maximum compatibility.
+        full_prompt = f"{system_prompt}\n\n{prompt}"
+
+        response = model.generate_content(full_prompt)
+        
+        return response.text or ""
+
+    except Exception as e:
+        logger.error(f"Google API error: {e}")
+        raise LLMProviderError(f"Google API failed: {e}") from e
+
+
 def _call_mock(prompt: str, system_prompt: str, config: LLMConfig) -> str:
     """Mock LLM for testing - returns minimal valid mapping."""
     logger.info("Using mock LLM provider")
