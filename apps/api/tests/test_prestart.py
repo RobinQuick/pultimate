@@ -54,10 +54,12 @@ def test_full_flow(mock_run_migrations, mock_init_db, mock_wait_for_db):
 
 @patch("prestart.init_db_connection")
 @patch("prestart.subprocess.run")
-@patch("prestart.Path.exists")
-def test_alembic_config_missing(mock_exists, mock_subprocess, mock_init_db):
+@patch("prestart.Path")
+def test_alembic_config_missing(mock_path_cls, mock_subprocess, mock_init_db):
     """Ensure prestart fails if alembic.ini is missing."""
-    mock_exists.return_value = False # alembic.ini does not exist
+    # Configure the instance returned by Path(...) constructor
+    mock_path_instance = mock_path_cls.return_value
+    mock_path_instance.exists.return_value = False # .exists() returns False
     mock_engine = MagicMock()
     mock_init_db.return_value = mock_engine
     mock_conn = MagicMock()
