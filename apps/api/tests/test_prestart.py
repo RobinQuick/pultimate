@@ -68,7 +68,7 @@ def test_alembic_config_missing(mock_exists, mock_subprocess, mock_init_db):
     # Wait, main() implementation:
     # try: run_migrations() except Exception: sys.exit(1)
     # So we need to mock sys.exit to verify it was called, or import run_migrations directly
-    from prestart import run_migrations, main
+    from prestart import run_migrations
     import pytest
 
     with pytest.raises(FileNotFoundError, match="alembic.ini not found"):

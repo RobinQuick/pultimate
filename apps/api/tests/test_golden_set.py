@@ -6,7 +6,7 @@ Tests:
 - test_no_gen_policy: LLM output has no content generation fields
 """
 
-import asyncio
+
 from pathlib import Path
 
 from pptx import Presentation
