@@ -49,3 +49,27 @@ def test_full_flow(mock_subprocess, mock_init_db):
 
     # Verify migration run
     mock_subprocess.assert_called_with(["alembic", "upgrade", "head"], check=True)
+
+@patch("prestart.init_db_connection")
+@patch("prestart.subprocess.run")
+@patch("prestart.os.path.exists")
+def test_alembic_config_missing(mock_exists, mock_subprocess, mock_init_db):
+    """Ensure prestart fails if alembic.ini is missing."""
+    mock_exists.return_value = False # alembic.ini does not exist
+    mock_engine = MagicMock()
+    mock_init_db.return_value = mock_engine
+    mock_conn = MagicMock()
+    mock_engine.begin.return_value.__enter__.return_value = mock_conn
+
+    # Catch the raised FileNotFoundError (since we raise it now)
+    # The main() catches Exception and calls sys.exit(1), but run_migrations raises FileNotFoundError
+    # Wait, main() implementation:
+    # try: run_migrations() except Exception: sys.exit(1)
+    # So we need to mock sys.exit to verify it was called, or import run_migrations directly
+    from prestart import run_migrations, main
+    import pytest
+    
+    with pytest.raises(FileNotFoundError, match="alembic.ini not found"):
+        run_migrations()
+
+

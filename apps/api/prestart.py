@@ -88,10 +88,24 @@ def acquire_advisory_lock(conn):
 
 def run_migrations():
     """Run Alembic upgrades"""
+    if os.getenv("SKIP_MIGRATIONS", "false").lower() == "true":
+         logger.info("SKIP_MIGRATIONS is true, skipping alembic upgrade.")
+         return
+
+    logger.info(f"Current working directory: {os.getcwd()}")
+    alembic_cfg = Path("alembic.ini")
+    if not alembic_cfg.exists():
+         logger.error(f"alembic.ini not found at {alembic_cfg.absolute()}")
+         # Try to find it nearby for debugging context
+         logger.info(f"Directory listing: {os.listdir('.')}")
+         raise FileNotFoundError("alembic.ini not found")
+
+    logger.info(f"Found alembic.ini at: {alembic_cfg.absolute()}")
     logger.info("Running pending migrations (alembic upgrade head)...")
     try:
         # Run alembic as subprocess to ensure clean state and separate logging
-        subprocess.run(["alembic", "upgrade", "head"], check=True)
+        # We use current python executable to ensure we use the same env
+        subprocess.run([sys.executable, "-m", "alembic", "-c", "alembic.ini", "upgrade", "head"], check=True)
         logger.info("Migrations completed successfully.")
     except subprocess.CalledProcessError as e:
         logger.error(f"Migration failed with exit code {e.returncode}")
@@ -129,4 +143,5 @@ def main():
 
 
 if __name__ == "__main__":
+    from pathlib import Path  # Ensure Path is available
     main()
