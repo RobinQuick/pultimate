@@ -1,9 +1,9 @@
 """System check endpoints."""
 
 import logging
-import os
 
-from fastapi import APIRouter, Depends, status
+
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession

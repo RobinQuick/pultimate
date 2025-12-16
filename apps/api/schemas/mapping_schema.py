@@ -10,7 +10,7 @@ NO-GEN POLICY ENFORCED:
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class ElementType(str, Enum):
@@ -126,14 +126,12 @@ class ElementMapping(BaseModel):
     target_slide_index: int | None = Field(None, ge=0, description="Target slide in output")
     reason: str | None = Field(None, max_length=100, description="Brief reason for decision")
 
-    @field_validator("target_placeholder_id")
-    @classmethod
-    def validate_placeholder_for_action(cls, v, info):
+    @model_validator(mode='after')
+    def validate_placeholder_for_action(self):
         """Ensure placeholder is set for MAP action."""
-        action = info.data.get("action")
-        if action == MappingAction.MAP and v is None:
+        if self.action == MappingAction.MAP and self.target_placeholder_id is None:
             raise ValueError("target_placeholder_id required when action is MAP")
-        return v
+        return self
 
 
 class SlideMapping(BaseModel):

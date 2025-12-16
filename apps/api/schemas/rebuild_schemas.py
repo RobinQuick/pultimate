@@ -116,3 +116,24 @@ class RebuildJobList(BaseModel):
 
     items: list[RebuildJobResponse]
     total: int
+
+
+class ShareJobResponse(BaseModel):
+    """Response when creating a share link."""
+    share_url: str
+    token: str
+    expires_at: datetime
+
+
+class SharedJobDetail(BaseModel):
+    """Public details of a shared job."""
+
+    id: str
+    status: JobStatus
+    progress: int
+    created_at: datetime
+    completed_at: datetime | None = None
+    # evidence: dict | None = None  # Computed on frontend or backend?
+    events: list[JobEventResponse]
+    artifacts: list[ArtifactWithUrl]
+

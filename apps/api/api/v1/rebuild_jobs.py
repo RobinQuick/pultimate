@@ -19,7 +19,6 @@ from models.sql_models import (
     User,
 )
 from pathlib import Path
-import shutil
 from schemas.rebuild_schemas import (
     ArtifactWithUrl,
     JobArtifactsResponse,
@@ -28,6 +27,8 @@ from schemas.rebuild_schemas import (
     RebuildJobDetail,
     RebuildJobList,
     RebuildJobResponse,
+    ShareJobResponse,
+    SharedJobDetail,
 )
 from services.storage import storage
 from worker import rebuild_deck_task
@@ -239,13 +240,13 @@ async def create_demo_job(
     # Define demo asset paths
     BASE_DIR = Path(__file__).resolve().parents[3]  # apps/api
     CASE_DIR = BASE_DIR / "golden_set" / "cases" / "case_001"
-    
+
     DEMO_DECK_NAME = "Demo Deck (Golden Sample)"
     DEMO_TEMPLATE_NAME = "Demo Template (Golden Sample)"
 
     if not CASE_DIR.exists():
         raise HTTPException(
-            status_code=500, 
+            status_code=500,
             detail=f"Demo assets missing on server: {CASE_DIR}"
         )
 
@@ -270,9 +271,9 @@ async def create_demo_job(
              if ws:
                  deck.workspace_id = ws.id
              else:
-                 # Should fail or create default? 
+                 # Should fail or create default?
                  # For demo let's assume valid user state or fail hard
-                 pass 
+                 pass
 
         db.add(deck)
         await db.commit()
@@ -281,7 +282,7 @@ async def create_demo_job(
         # Upload file
         input_file = CASE_DIR / "input.pptx"
         s3_key = await storage.upload_bytes(input_file.read_bytes(), f"decks/{deck.id}.pptx")
-        
+
         # Create DeckFile record
         deck_file = DeckFile(
             deck_id=deck.id,
@@ -314,7 +315,7 @@ async def create_demo_job(
         potx_file = CASE_DIR / "template.pptx" # Uses pptx as potx source for demo
         if not potx_file.exists():
              potx_file = CASE_DIR / "template.potx"
-        
+
         s3_key = await storage.upload_bytes(potx_file.read_bytes(), f"templates/{template.id}/v1.potx")
 
         # Create Version
@@ -345,5 +346,115 @@ async def create_demo_job(
 
     # Enqueue
     rebuild_deck_task.delay(job.id)
-    
+
     return job
+
+
+@router.post("/{job_id}/share", response_model=ShareJobResponse)
+async def share_rebuild_job(
+    job_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Generate a shareable link for a rebuild job.
+    Token is valid for 7 days.
+    """
+    import secrets
+    import hashlib
+    from datetime import datetime, timedelta
+    from core.config import settings
+
+    # Verify job ownership
+    job_result = await db.execute(
+        select(RebuildJob).where(RebuildJob.id == job_id, RebuildJob.user_id == current_user.id)
+    )
+    job = job_result.scalars().first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    # Generate token
+    token = secrets.token_urlsafe(32)
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    expires_at = datetime.utcnow() + timedelta(days=7)
+
+    job.share_token_hash = token_hash
+    job.share_expires_at = expires_at
+    await db.commit()
+
+    # Construct URL (Frontend URL)
+    base_url = settings.API_BASE or "http://localhost:3000"
+    share_url = f"{base_url}/share/{token}"
+
+    return ShareJobResponse(share_url=share_url, token=token, expires_at=expires_at)
+
+
+@router.get("/shared/{token}", response_model=SharedJobDetail)
+async def get_shared_job(
+    token: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get public details of a shared job.
+    """
+    import hashlib
+    from datetime import datetime
+
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+
+    # Find job
+    result = await db.execute(
+        select(RebuildJob)
+        .where(RebuildJob.share_token_hash == token_hash)
+        .options(selectinload(RebuildJob.events))
+    )
+    job = result.scalars().first()
+
+    if not job:
+        raise HTTPException(status_code=404, detail="Shared job not found")
+
+    # Check expiry
+    if job.share_expires_at and job.share_expires_at < datetime.utcnow():
+         raise HTTPException(status_code=410, detail="Share link expired")
+
+    # Get Whitelisted Artifacts (Output Deck + Mapping)
+    artifacts_result = await db.execute(
+        select(JobArtifact).where(
+            JobArtifact.job_id == job.id,
+            JobArtifact.artifact_type.in_(["OUTPUT_DECK", "MAPPING_JSON"])
+        )
+    )
+    artifacts = artifacts_result.scalars().all()
+
+    # Generate presigned URLs
+    artifacts_with_urls = []
+    for artifact in artifacts:
+        try:
+            download_url = await storage.generate_presigned_url(
+                artifact.s3_key,
+                expires_in=3600,
+                filename=artifact.filename,
+            )
+            artifacts_with_urls.append(
+                ArtifactWithUrl(
+                    id=artifact.id,
+                    artifact_type=artifact.artifact_type,
+                    filename=artifact.filename,
+                    size_bytes=artifact.size_bytes,
+                    created_at=artifact.created_at,
+                    download_url=download_url,
+                    expires_in=3600,
+                )
+            )
+        except Exception as e:
+            logger.error(f"Failed to generate presigned URL for shared artifact {artifact.id}: {e}")
+
+    return SharedJobDetail(
+        id=job.id,
+        status=job.status,
+        progress=job.progress,
+        created_at=job.created_at,
+        completed_at=job.completed_at,
+        events=job.events,
+        artifacts=artifacts_with_urls,
+    )

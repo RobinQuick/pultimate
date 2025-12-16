@@ -4,7 +4,6 @@ import logging
 from datetime import datetime
 from typing import Any, Optional
 
-from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from models.sql_models import JobEvent

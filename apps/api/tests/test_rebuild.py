@@ -171,8 +171,6 @@ def test_validate_mapping_against_inputs_invalid_element():
 
 def test_llm_mock_provider():
     """Mock LLM provider returns valid mapping."""
-    import asyncio
-
     from services.llm_service import call_llm_for_mapping
 
     elements = [
@@ -196,7 +194,7 @@ def test_llm_mock_provider():
     ]
 
     config = LLMConfig(provider="mock", model="mock-model")
-    result = asyncio.run(call_llm_for_mapping(elements, placeholders, config))
+    result = call_llm_for_mapping(elements, placeholders, config)
 
     assert isinstance(result, MappingResult)
     assert len(result.slide_mappings) >= 1

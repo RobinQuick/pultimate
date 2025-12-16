@@ -3,7 +3,6 @@
 NO-GEN POLICY: This worker copies content, never generates.
 """
 
-import json
 import logging
 import os
 import shutil
@@ -16,13 +15,14 @@ from celery import Celery
 from core.config import settings
 from models.sql_models import DeckFile, RebuildJob, TemplateVersion
 from services.job_events import emit_event
-from services.llm_service import LLMValidationError, call_llm_for_mapping
 from services.rebuild_service import (
     apply_mapping,
     parse_deck_elements,
     parse_template_placeholders,
 )
+from services.llm_service import call_llm_for_mapping, LLMValidationError
 from services.storage import storage
+
 
 logger = logging.getLogger(__name__)
 
@@ -58,11 +58,24 @@ def _get_sync_session():
     return Session()
 
 
-def _add_artifact(
+def _get_or_create_artifact(
     session, job_id: str, artifact_type: str, s3_key: str, filename: str, size_bytes: int | None = None
 ):
-    """Add a job artifact."""
+    """Get existing artifact or create new one (idempotent)."""
     from models.sql_models import JobArtifact
+
+    existing = (
+        session.query(JobArtifact)
+        .filter(
+            JobArtifact.job_id == job_id,
+            JobArtifact.artifact_type == artifact_type,
+            JobArtifact.filename == filename
+        )
+        .first()
+    )
+
+    if existing:
+        return existing
 
     artifact = JobArtifact(
         job_id=job_id,
@@ -81,17 +94,11 @@ def rebuild_deck_task(self, job_id: str):
     """
     Rebuild a deck using a template.
 
-    NO-GEN POLICY: Content is ONLY copied, never generated.
-    LLM only outputs mapping (ElementID -> PlaceholderID).
-
-    Pipeline:
-    1. Download deck + template from S3
-    2. Parse deck elements
-    3. Parse template placeholders
-    4. Call LLM for mapping (strict JSON only)
-    5. Apply mapping (copy content, no generation)
-    6. Save output to S3
-    7. Update job status + create artifacts
+    Features:
+    - Synchronous execution
+    - Strict Idempotence (DB + S3 checks)
+    - State Repair (S3 exists -> DB insert)
+    - NO-GEN Policy (Copy only)
     """
     logger.info(f"[Job {job_id}] Starting rebuild task")
 
@@ -107,13 +114,54 @@ def rebuild_deck_task(self, job_id: str):
             logger.error(f"[Job {job_id}] Job not found")
             return {"status": "FAILED", "error": "Job not found"}
 
-        # IDEMPOTENCE CHECK: If output exists and success, skip
+        # IDEMPOTENCE & REPAIR CHECK
         output_s3_key = f"jobs/{job_id}/output.pptx"
-        if job.status == "SUCCEEDED" or storage.file_exists_sync(output_s3_key):
-             logger.info(f"[Job {job_id}] Output already exists. Skipping rebuild.")
-             # Ensure artifacts exist in DB if missing (repair state)
-             # But for now, just return success
-             return {"status": "SUCCEEDED", "message": "Idempotent skip"}
+        from models.sql_models import JobArtifact
+
+        # Check DB for output artifact
+        db_artifact = (
+            session.query(JobArtifact)
+            .filter(JobArtifact.job_id == job_id, JobArtifact.artifact_type == "OUTPUT_DECK")
+            .first()
+        )
+
+        # Check S3 for output file
+        file_size = storage.get_file_size_sync(output_s3_key)
+        s3_exists = file_size is not None and file_size > 10240  # > 10KB integrity check
+
+        # CASE A: Fully done (DB + S3)
+        if job.status == "SUCCEEDED" and db_artifact:
+             if s3_exists:
+                 logger.info(f"[Job {job_id}] Already SUCCEEDED with valid artifact. Skipping.")
+                 return {"status": "SUCCEEDED", "message": "Idempotent skip"}
+             else:
+                 # Inconsistent state: DB says done, S3 missing/corrupt. Force rebuild.
+                 logger.warning(f"[Job {job_id}] Status SUCCEEDED but S3 artifact missing/small. Re-running.")
+
+        # CASE B: Repair state (S3 done, DB missing)
+        # We permit this even if job.status != SUCCEEDED, to recover from crash after upload but before commit
+        if s3_exists and not db_artifact:
+             logger.info(f"[Job {job_id}] Found orphan S3 output (>10KB). Repairing DB state.")
+             _get_or_create_artifact(
+                 session,
+                 job_id,
+                 "OUTPUT_DECK",
+                 output_s3_key,
+                 "output.pptx",
+                 size_bytes=file_size
+             )
+
+             # Also ensure status is SUCCEEDED
+             if job.status != "SUCCEEDED":
+                 job.status = "SUCCEEDED"
+                 job.progress = 100
+                 job.completed_at = datetime.utcnow()
+                 session.commit()
+                 emit_event(session, job_id, "COMPLETED", "Job state repaired from existing S3 output")
+
+             return {"status": "SUCCEEDED", "message": "State repaired", "repaired": True}
+
+        # Otherwise: Proceed with normal execution
 
         # PROD CHECK: Ensure secrets exist
         if settings.LLM_PROVIDER == "openai" and not os.environ.get("OPENAI_API_KEY"):
@@ -158,9 +206,11 @@ def rebuild_deck_task(self, job_id: str):
         job.progress = 10
         session.commit()
 
-        # =====================================================================
-        # STEP 2: Download inputs from S3
-        # =====================================================================
+        # IDEMPOTENCE (Mapping): Check if mapping exists
+        s3_mapping_key = f"jobs/{job_id}/mapping.json"
+        mapping = None
+
+        # We can reuse mapping if it exists in S3 (Sync)
         emit_event(session, job_id, "PROGRESS", "Downloading inputs from storage")
 
         work_dir = Path(tempfile.mkdtemp(prefix=f"rebuild_{job_id}_"))
@@ -176,6 +226,8 @@ def rebuild_deck_task(self, job_id: str):
 
         job.progress = 25
         session.commit()
+
+        # Check integrity of inputs? Usually not needed if verify=True, but boto3 download usually errs if fail.
         emit_event(session, job_id, "DOWNLOADED", "Downloaded inputs from storage")
 
         # =====================================================================
@@ -205,11 +257,12 @@ def rebuild_deck_task(self, job_id: str):
         # =====================================================================
         # STEP 5: Call LLM for mapping (NO-GEN - JSON only)
         # =====================================================================
-        
-        # IDEMPOTENCE: Check if mapping exists
+
+        # IDEMPOTENCE (Mapping): Check if mapping exists
         s3_mapping_key = f"jobs/{job_id}/mapping.json"
         mapping = None
-        
+
+        # We can reuse mapping if it exists in S3 (Sync)
         if storage.file_exists_sync(s3_mapping_key):
              logger.info(f"[Job {job_id}] Found existing mapping.json, skipping LLM.")
              emit_event(session, job_id, "PROGRESS", "Using existing mapping from storage")
@@ -217,10 +270,13 @@ def rebuild_deck_task(self, job_id: str):
              storage.download_file_sync(s3_mapping_key, str(local_mapping_path))
              try:
                  # Load and validate existing mapping
-                 from models.sql_models import MappingResult  # Re-import just to be safe if moved
                  # Actually MappingResult is in schemas
                  from schemas.mapping_schema import MappingResult
                  mapping = MappingResult.model_validate_json(local_mapping_path.read_text())
+                 # Ensure artifact exists
+                 _get_or_create_artifact(
+                     session, job_id, "MAPPING_JSON", s3_mapping_key, "mapping.json", local_mapping_path.stat().st_size
+                 )
              except Exception as e:
                  logger.warning(f"Failed to load existing mapping: {e}. Re-generating.")
                  mapping = None
@@ -229,7 +285,7 @@ def rebuild_deck_task(self, job_id: str):
             emit_event(session, job_id, "PROGRESS", "Generating element mapping via LLM")
             try:
                 mapping = call_llm_for_mapping(
-                    elements_result.elements, 
+                    elements_result.elements,
                     placeholders_result.placeholders
                 )
                 logger.info(f"[Job {job_id}] LLM mapping complete: {len(mapping.slide_mappings)} slides")
@@ -243,18 +299,17 @@ def rebuild_deck_task(self, job_id: str):
                     # Upload as artifact
                     failed_key = f"jobs/{job_id}/failed_mapping.json"
                     storage.upload_bytes_sync(raw_output.encode(), failed_key)
-                    _add_artifact(session, job_id, "MAPPING_JSON", failed_key, "failed_mapping.json")
+                    _get_or_create_artifact(session, job_id, "MAPPING_JSON", failed_key, "failed_mapping.json", len(raw_output))
 
                 raise ValueError(f"LLM mapping failed: {e}")
-            
+
             # Save mapping as artifact
             mapping_json = mapping.model_dump_json(indent=2)
             mapping_path = work_dir / "mapping.json"
             mapping_path.write_text(mapping_json)
 
             storage.upload_bytes_sync(mapping_json.encode(), s3_mapping_key)
-            # Upsert logic skipped for simplicity, but acceptable for idempotence inside same job
-            _add_artifact(session, job_id, "MAPPING_JSON", s3_mapping_key, "mapping.json", len(mapping_json))
+            _get_or_create_artifact(session, job_id, "MAPPING_JSON", s3_mapping_key, "mapping.json", len(mapping_json))
 
         job.progress = 60
         session.commit()
@@ -309,10 +364,14 @@ def rebuild_deck_task(self, job_id: str):
 
         output_size = result.output_path.stat().st_size
 
+        # Double check size for integrity locally too?
+        if output_size < 10000: # 10KB
+             logger.warning(f"Output file size {output_size} bytes is surprisingly small.")
+
         with open(result.output_path, "rb") as f:
             storage.upload_bytes_sync(f.read(), output_s3_key)
 
-        _add_artifact(session, job_id, "OUTPUT_DECK", output_s3_key, "output.pptx", output_size)
+        _get_or_create_artifact(session, job_id, "OUTPUT_DECK", output_s3_key, "output.pptx", output_size)
         emit_event(session, job_id, "UPLOADED", "Output deck uploaded to storage")
 
         # =====================================================================
@@ -361,11 +420,3 @@ def rebuild_deck_task(self, job_id: str):
                 shutil.rmtree(work_dir)
             except Exception:
                 pass
-
-
-# Legacy task for backwards compatibility
-@celery_app.task
-def process_deck(deck_id: str, file_key: str, template_id: str | None = None):
-    """Legacy task - use rebuild_deck_task instead."""
-    logger.warning("process_deck is deprecated, use rebuild_deck_task")
-    return {"status": "DEPRECATED", "message": "Use rebuild_deck_task"}

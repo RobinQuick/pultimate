@@ -14,7 +14,7 @@ export default function DemoPage() {
         setError(null);
         try {
             const job = await api.rebuildJobs.createDemoJob();
-            router.push(`/jobs/${job.id}`);
+            router.push(`/app/jobs/${job.id}?demo=true`);
         } catch (err: any) {
             setError(err.message || 'Failed to start demo');
             setLoading(false);

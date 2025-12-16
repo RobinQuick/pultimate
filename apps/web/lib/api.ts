@@ -64,6 +64,22 @@ export interface JobEvent {
     created_at: string;
 }
 
+export interface ShareJobResponse {
+    share_url: string;
+    token: string;
+    expires_at: string;
+}
+
+export interface SharedJobDetail {
+    id: string;
+    status: 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED';
+    progress: number;
+    created_at: string;
+    completed_at?: string;
+    events: JobEvent[];
+    artifacts: JobArtifact[];
+}
+
 // Generic fetch client
 export async function fetchClient<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
     const headers = new Headers(options.headers);
@@ -215,6 +231,14 @@ export const api = {
             return fetchClient<RebuildJob>('/api/v1/rebuild-jobs/demo', {
                 method: 'POST',
             });
+        },
+
+        async shareJob(id: string): Promise<ShareJobResponse> {
+            return fetchClient<ShareJobResponse>(`/api/v1/rebuild-jobs/${id}/share`, { method: 'POST' });
+        },
+
+        async getSharedJob(token: string): Promise<SharedJobDetail> {
+            return fetchClient<SharedJobDetail>(`/api/v1/rebuild-jobs/shared/${token}`);
         },
     },
 

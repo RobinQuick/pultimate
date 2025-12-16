@@ -313,6 +313,16 @@ class StorageService:
         except ClientError:
             return False
 
+    def get_file_size_sync(self, key: str, bucket: str = None) -> int | None:
+        """Get file size in bytes synchronously. Returns None if missing."""
+        bucket = bucket or self.bucket
+        s3 = self._get_sync_client()
+        try:
+            response = s3.head_object(Bucket=bucket, Key=key)
+            return response.get("ContentLength")
+        except ClientError:
+            return None
+
 
 # Singleton instance
 storage = StorageService()

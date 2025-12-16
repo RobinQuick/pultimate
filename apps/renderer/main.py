@@ -1,8 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import Response
-from pptx import Presentation
-from PIL import Image
-import io
+
 import os
 import subprocess
 import shutil

@@ -19,7 +19,7 @@ CASES_DIR = Path(__file__).parent / "cases"
 def create_simple_deck(path: Path, title: str, content: list[str]):
     """Create a simple deck with Title + Content."""
     prs = Presentation()
-    
+
     # Title Slide
     slide = prs.slides.add_slide(prs.slide_layouts[0])
     slide.shapes.title.text = title
@@ -72,7 +72,7 @@ def generate_cases():
 
         # Input
         create_simple_deck(case_path / "input.pptx", title, content)
-        
+
         # Template
         create_template_deck(case_path / "template.pptx")
 
@@ -83,7 +83,7 @@ def generate_cases():
 **Expected Outcome**: Content should be preserved exactly.
 **Elements**: {len(content) + 1} slides.
 """)
-        
+
         print(f"Generated {name}")
 
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { api, RebuildJob, JobArtifact, JobEvent } from '@/lib/api';
 
 const POLL_INTERVAL = 2000; // 2 seconds
@@ -9,6 +9,7 @@ const POLL_INTERVAL = 2000; // 2 seconds
 export default function JobDetailPage() {
     const params = useParams();
     const jobId = params.id as string;
+    const searchParams = useSearchParams();
 
     const [job, setJob] = useState<RebuildJob | null>(null);
     const [artifacts, setArtifacts] = useState<JobArtifact[]>([]);
@@ -106,6 +107,22 @@ export default function JobDetailPage() {
         return type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
     }
 
+    const [shareUrl, setShareUrl] = useState<string | null>(null);
+    const [isSharing, setIsSharing] = useState(false);
+
+    async function handleShare() {
+        if (!job) return;
+        setIsSharing(true);
+        try {
+            const result = await api.rebuildJobs.shareJob(job.id);
+            setShareUrl(result.share_url);
+        } catch (err: any) {
+            alert('Failed to create share link: ' + err.message);
+        } finally {
+            setIsSharing(false);
+        }
+    }
+
     if (loading) return <div className="container"><h1>Loading Job...</h1></div>;
 
     if (error || !job) {
@@ -121,9 +138,40 @@ export default function JobDetailPage() {
     return (
         <div className="container">
             <div className="header">
-                <h1>Rebuild Job</h1>
-                <span className="job-id">{job.id.slice(0, 8)}...</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <h1>Rebuild Job</h1>
+                    <span className="job-id">{job.id.slice(0, 8)}...</span>
+                </div>
+                <button onClick={handleShare} disabled={isSharing} className="share-btn">
+                    {isSharing ? 'Generating...' : '🔗 Share Report'}
+                </button>
             </div>
+
+            {searchParams.get('demo') === 'true' && job.status === 'SUCCEEDED' && (
+                <div className="card demo-nudge">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <div style={{ fontSize: '2rem' }}>🎉</div>
+                        <div style={{ flex: 1 }}>
+                            <h2 style={{ margin: 0, color: '#0070f3' }}>That was easy, right?</h2>
+                            <p style={{ margin: '0.5rem 0', color: '#555' }}>
+                                You've just rebuilt a deck in seconds. Now try it with your own corporate template.
+                            </p>
+                        </div>
+                        <a href="/app/templates" className="cta-btn">Upload Your Template →</a>
+                    </div>
+                </div>
+            )}
+
+            {shareUrl && (
+                <div className="card share-box">
+                    <strong>Share this unique link (valid for 7 days):</strong>
+                    <div className="share-input-group">
+                        <input type="text" readOnly value={shareUrl} onClick={e => e.currentTarget.select()} />
+                        <button onClick={() => navigator.clipboard.writeText(shareUrl)}>Copy</button>
+                    </div>
+                </div>
+            )
+            }
 
             {/* Status Section */}
             <div className="card status-card">
@@ -306,6 +354,18 @@ export default function JobDetailPage() {
                 
                 .back-link { color: #0070f3; text-decoration: none; display: inline-block; margin-top: 1rem; }
                 .error { background: #fee; color: #c00; padding: 1rem; border-radius: 4px; margin-bottom: 1rem; }
+
+                .share-btn { background: black; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-weight: 500; }
+                .share-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+                
+                .share-box { background: #eefff5; border: 1px solid #ccfce3; margin-top: -1rem; display: flex; flex-direction: column; gap: 0.5rem; }
+                .share-input-group { display: flex; gap: 0.5rem; }
+                .share-input-group input { flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; }
+                .share-input-group button { background: #22c55e; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; }
+                
+                .demo-nudge { border: 2px solid #0070f3; background: #f0f9ff; }
+                .cta-btn { background: #0070f3; color: white; padding: 0.8rem 1.5rem; border-radius: 6px; text-decoration: none; font-weight: 600; white-space: nowrap; }
+                .cta-btn:hover { background: #0051a2; }
             `}</style>
         </div>
     );

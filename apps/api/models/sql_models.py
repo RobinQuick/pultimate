@@ -152,6 +152,10 @@ class RebuildJob(Base):
     error_message = Column(String, nullable=True)
     error_details = Column(JSONB, nullable=True)
 
+    # Sharing
+    share_token_hash = Column(String, nullable=True, index=True)
+    share_expires_at = Column(DateTime, nullable=True)
+
     # Relationships
     workspace = relationship("Workspace")
     user = relationship("User")
