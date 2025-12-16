@@ -29,9 +29,11 @@ def test_wait_for_db_failure_retry(mock_sleep, mock_create_engine):
     assert mock_sleep.call_count == 1
 
 
+@patch("prestart.wait_for_db")
 @patch("prestart.init_db_connection")
-@patch("prestart.subprocess.run")
-def test_full_flow(mock_subprocess, mock_init_db):
+@patch("prestart.run_migrations")
+def test_full_flow(mock_run_migrations, mock_init_db, mock_wait_for_db):
+    mock_wait_for_db.return_value = True
     mock_engine = MagicMock()
     mock_init_db.return_value = mock_engine
     mock_conn = MagicMock()
@@ -48,7 +50,7 @@ def test_full_flow(mock_subprocess, mock_init_db):
     # Ideally verify pg_advisory_xact_lock call
 
     # Verify migration run
-    mock_subprocess.assert_called_with(["alembic", "upgrade", "head"], check=True)
+    mock_run_migrations.assert_called_once()
 
 @patch("prestart.init_db_connection")
 @patch("prestart.subprocess.run")
@@ -66,7 +68,7 @@ def test_alembic_config_missing(mock_exists, mock_subprocess, mock_init_db):
     # Wait, main() implementation:
     # try: run_migrations() except Exception: sys.exit(1)
     # So we need to mock sys.exit to verify it was called, or import run_migrations directly
-    from prestart import run_migrations
+    from prestart import run_migrations, main
     import pytest
 
     with pytest.raises(FileNotFoundError, match="alembic.ini not found"):

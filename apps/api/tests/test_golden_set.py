@@ -287,7 +287,7 @@ def test_mock_llm_returns_valid_mapping():
     ]
 
     config = LLMConfig(provider="mock", model="mock")
-    result = asyncio.run(call_llm_for_mapping(elements, placeholders, config))
+    result = call_llm_for_mapping(elements, placeholders, config)
 
     # Verify it's a valid mapping
     assert isinstance(result, MappingResult)

@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import OperationalError
@@ -143,5 +144,4 @@ def main():
 
 
 if __name__ == "__main__":
-    from pathlib import Path  # Ensure Path is available
     main()
