@@ -106,7 +106,7 @@ def run_migrations():
     try:
         # Run alembic as subprocess to ensure clean state and separate logging
         # We use current python executable to ensure we use the same env
-        subprocess.run([sys.executable, "-m", "alembic", "-c", "alembic.ini", "upgrade", "head"], check=True)
+        subprocess.run([sys.executable, "-m", "alembic", "-c", str(alembic_cfg.absolute()), "upgrade", "head"], check=True)
         logger.info("Migrations completed successfully.")
     except subprocess.CalledProcessError as e:
         logger.error(f"Migration failed with exit code {e.returncode}")
