@@ -224,6 +224,10 @@ def call_llm_for_mapping(
         if not settings.OPENAI_API_KEY:
             raise LLMProviderError("OPENAI_API_KEY not configured")
         raw_output = _call_openai(user_prompt, system_prompt, config)
+    elif config.provider == "google":
+        if not settings.GOOGLE_API_KEY:
+            raise LLMProviderError("GOOGLE_API_KEY not configured")
+        raw_output = _call_google(user_prompt, system_prompt, config)
     else:
         raise LLMProviderError(f"Unknown provider: {config.provider}")
 
