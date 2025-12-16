@@ -59,6 +59,7 @@ class Settings(BaseSettings):
     LLM_MODEL: str = Field(default="gpt-4o-mini", description="LLM model name")
     LLM_TIMEOUT: int = Field(default=60, description="LLM request timeout in seconds")
     OPENAI_API_KEY: str = Field(default="", description="OpenAI API key")
+    GOOGLE_API_KEY: str = Field(default="", description="Google Gemini API key")
 
     @property
     def DATABASE_URL(self) -> str:
